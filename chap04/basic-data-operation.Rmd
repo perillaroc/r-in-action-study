@@ -1,0 +1,779 @@
+---
+title: "基本数据管理"
+output: html_notebook
+---
+
+## 示例
+
+构造 `data.frame` 对象
+
+```{r paged.print=FALSE}
+manager <- 1:5
+date <- c(
+  "10/24/08",
+  "10/28/08",
+  "10/1/08",
+  "10/12/08",
+  "5/1/09"
+)
+country <- c(
+  "US",
+  "US",
+  "UK",
+  "UK",
+  "UK"
+)
+gender <- c("M", "F", "F", "M", "F")
+age <- c(32, 45, 25, 39, 99)
+q1 <- c(5, 3, 3, 3, 2)
+q2 <- c(4, 5, 5, 3, 2)
+q3 <- c(5, 2, 5, 4, 1)
+q4 <- c(5, 5, 5, NA, 2)
+q5 <- c(5, 5, 2, NA, 1)
+
+leadership <- data.frame(
+  manager,
+  date,
+  country,
+  gender,
+  age,
+  q1,
+  q2,
+  q3,
+  q4,
+  q5,
+  stringsAsFactors=FALSE
+)
+leadership
+```
+
+每一列表示一个变量，每一行表示一个观测
+
+## 创建新变量
+
+三种方式
+
+赋值
+
+```{r}
+mydata <- data.frame(
+  x1=c(2, 2, 6, 4),
+  x2=c(3, 4, 2, 8)
+)
+mydata$sumx <- mydata$x1 + mydata$x2
+mydata$meanx <- (mydata$x1 + mydata$x2)/2
+```
+
+使用 `attach()` 省略对象名
+
+```{r}
+attach(mydata)
+mydata$sumx <- x1 + x2
+mydata$meanx <- (x1 + x2)/2
+detach(mydata)
+```
+
+`transform()` 函数
+
+```{r}
+mydata <- transform(
+  mydata,
+  sumx=x1 + x2,
+  meanx=(x1 + x2)/2
+)
+```
+
+## 变量的重编码
+
+修改现有变量
+
+```{r paged.print=FALSE}
+leadership$age[leadership$age == 99] <- NA
+leadership
+```
+
+增加新变量
+
+```{r paged.print=FALSE}
+leadership$agecat[leadership$age > 75] <- "Elder"
+leadership$agecat[
+  leadership$age >= 55 &
+  leadership$age <= 75
+] <- "Middle Aged"
+leadership$agecat[leadership$age < 55] <- "Young"
+leadership
+```
+
+使用 `within` 简化代码
+
+```{r}
+leadership <- within(
+  leadership,
+  {
+    agecat <- NA
+    agecat[age > 75] <- "Elder"
+    agecat[age >= 55 & age <= 75] <- "Middle Aged"
+    agecat[age < 55] <- "Young"
+  }
+)
+```
+
+## 变量的重命名
+
+`names()` 函数
+
+```{r}
+names(leadership)
+```
+
+```{r paged.print=FALSE}
+names(leadership)[2] <- "testDate"
+leadership
+```
+
+`plyr` 包中的 `rename()` 函数
+
+```{r paged.print=FALSE}
+library(plyr)
+
+leadership <- data.frame(
+  manager,
+  date,
+  country,
+  gender,
+  age,
+  q1,
+  q2,
+  q3,
+  q4,
+  q5,
+  stringsAsFactors=FALSE
+)
+
+leadership <- rename(
+  leadership,
+  c(
+    manager="managerID",
+    date="testDate"
+  )
+)
+leadership
+```
+
+## 缺失值
+
+`is.na()` 函数
+
+```{r}
+is.na(leadership[, 6:10])
+```
+
+`NA` 等特殊值无法使用逻辑关系符比较
+
+```{r}
+na_var <- NA
+na_var == NA
+```
+
+`Inf` 和 `-Inf` 表示正无穷大和负无穷大
+
+```{r}
+is.infinite(5/0)
+```
+
+`NaN` 表示不可能的值
+
+```{r}
+is.nan(NaN)
+```
+
+### 重编码某些值为缺失值
+
+```{r paged.print=FALSE}
+leadership <- data.frame(
+  manager,
+  date,
+  country,
+  gender,
+  age,
+  q1,
+  q2,
+  q3,
+  q4,
+  q5,
+  stringsAsFactors=FALSE
+)
+
+leadership$age[leadership$age == 99] <- NA
+leadership
+```
+
+### 在分析中排除缺失值
+
+```{r}
+x <- c(1, 2, NA, 3)
+x[1] + x[2] + x[3] + x[4]
+```
+
+```{r}
+sum(x)
+```
+
+`na.rm` 选项移除缺失值
+
+```{r}
+sum(x, na.rm=TRUE)
+```
+
+`na.omit()` 函数删除包含缺失值的观测，称为行删除。
+
+注：该方法仅是处理缺失值的一种方法。
+
+```{r paged.print=FALSE}
+leadership
+```
+
+```{r paged.print=FALSE}
+trim_leadership <- na.omit(leadership)
+trim_leadership
+```
+
+## 日期
+
+`as.Date()`
+
+默认格式为 `yyyy-mm-dd`
+
+```{r}
+as.Date(c("2007-06-22", "2004-02-13"))
+```
+
+格式字符串
+
+```{r}
+as.Date(c("01/05/1965", "08/16/1975"), "%m/%d/%Y")
+```
+
+```{r paged.print=FALSE}
+leadership$date <- as.Date(leadership$date, "%m/%d/%y")
+leadership
+```
+
+`Sys.Date()` 获取日期
+
+```{r}
+Sys.Date()
+```
+
+`date()` 获取时间
+
+```{r}
+date()
+```
+
+`format()` 函数格式化日期
+
+```{r}
+today <- Sys.Date()
+format(today, format="%B %d %y")
+```
+
+```{r}
+format(today, format="%A")
+```
+
+算术运算
+
+```{r}
+start_date <- as.Date("2004-02-13")
+end_date <- as.Date("2011-01-22")
+days <- end_date - start_date
+days
+```
+
+`difftime()`
+
+```{r}
+today <- Sys.Date()
+dob <- as.Date("1956-10-12")
+difftime(today, dob, units="weeks")
+```
+
+### 将日期转换为字符串变量
+
+```{r}
+str_date <- as.character(today)
+str_date
+```
+
+### 更进一步
+
+#### lubridate 包
+
+```{r}
+library(lubridate)
+```
+
+##### 解析日期和时间
+
+```{r}
+ymd("20110604")
+```
+
+```{r}
+mdy("06-04-2011")
+```
+
+```{r}
+dmy("04/06/2011")
+```
+
+解析时间
+
+```{r}
+arrive <- ymd_hms(
+  "2011-06-04 12:00:00", 
+  tz="Pacific/Auckland"
+)
+arrive
+```
+
+```{r}
+leave <- ymd_hms(
+  "2011-08-10 14:00:00", 
+  tz="Pacific/Auckland"
+)
+leave
+```
+
+##### 设置和提取信息
+
+```{r}
+second(arrive)
+```
+
+```{r}
+second(arrive) <- 25
+arrive
+```
+
+```{r}
+wday(arrive)
+```
+
+```{r}
+wday(arrive, label=TRUE)
+```
+
+##### 时区
+
+```{r}
+meeting <- ymd_hms(
+  "2011-07-01 09:00:00", 
+  tz="Pacific/Auckland"
+)
+with_tz(
+  meeting, 
+  "America/Chicago"
+)
+```
+
+```{r}
+mistake <- force_tz(
+  meeting,
+  "America/Chicago"
+)
+with_tz(
+  mistake,
+  "Pacific/Auckland"
+)
+```
+
+##### 时间段
+
+`interval()` 函数
+
+```{r}
+auckland <- interval(arrive, leave)
+auckland
+```
+
+`%--%` 运算符
+
+```{r}
+auckland <- arrive %--% leave
+auckland
+```
+
+```{r}
+jsm <- interval(
+  ymd(20110720, tz="Pacific/Auckland"),
+  ymd(20110831, tz="Pacific/Auckland")
+)
+jsm
+```
+
+是否有重叠
+
+```{r}
+int_overlaps(jsm, auckland)
+```
+
+```{r}
+setdiff(auckland, jsm)
+```
+
+##### 日期算术计算
+
+Period
+
+```{r}
+minutes(2)
+```
+
+Duration
+
+```{r}
+dminutes(2)
+```
+
+Duration 与 Period 的区别
+
+```{r}
+leap_year(2011)
+```
+
+```{r}
+ymd(20110101) + dyears(1)
+```
+
+```{r}
+ymd(20110101) + years(1)
+```
+
+```{r}
+leap_year(2012)
+```
+
+```{r}
+ymd(20120101) + dyears(1)
+```
+
+```{r}
+ymd(20120101) + years(1)
+```
+
+计算
+
+```{r}
+meetings <- meeting + weeks(0:5)
+meetings
+```
+
+`%within`
+
+```{r}
+meetings %within% jsm
+```
+
+
+```{r}
+auckland / ddays(1)
+```
+
+```{r}
+auckland / ddays(2)
+```
+
+```{r}
+auckland / dminutes(1)
+```
+
+```{r}
+auckland %/% months(1)
+```
+
+```{r}
+auckland %% months(1)
+```
+
+`as.period()` 函数
+
+```{r}
+as.period(auckland %% months(1))
+```
+
+```{r}
+as.period(auckland)
+```
+
+##### 不合理时间
+
+```{r}
+jan31 <- ymd("2013-01-31")
+jan31 + months(0:11)
+```
+
+```{r}
+floor_date(jan31, "month") + months(0:11) + days(31)
+```
+
+```{r}
+jan31 %m+% months(0:11)
+```
+
+##### 向量化
+
+lubridate 代码已开启向量化
+
+## 类型转换
+
+```{r}
+a <- c(1, 2, 3)
+a
+```
+
+```{r}
+is.numeric(a)
+```
+
+```{r}
+a <- as.character(a)
+a
+```
+
+```{r}
+is.numeric(a)
+```
+
+```{r}
+is.vector(a)
+```
+
+```{r}
+is.character(a)
+```
+
+## 数据排序
+
+`order()` 函数
+
+```{r paged.print=FALSE}
+new_data <- leadership[order(leadership$age),]
+new_data
+```
+
+多重排序
+
+```{r message=FALSE, paged.print=FALSE}
+attach(leadership)
+new_data <- leadership[order(gender, age),]
+detach(leadership)
+new_data
+```
+
+逆序
+
+```{r message=FALSE, paged.print=FALSE}
+attach(leadership)
+new_data <- leadership[order(gender, -age),]
+detach(leadership)
+new_data
+```
+
+## 数据集的合并
+
+### 向数据框添加列
+
+`merge()` 函数
+
+```{r eval=FALSE, include=FALSE}
+total <- merge(dataframeA, dataframeB, by="ID")
+total <- merge(dataframeA, dataframeB, by=c("ID", "Country"))
+```
+
+### 向数据框添加行
+
+```{r eval=FALSE, include=FALSE}
+total <- rbind(dataframeA, dataframeB)
+```
+
+
+## 数据集取子集
+
+### 选入（保留）变量
+
+变量序号
+
+```{r paged.print=FALSE}
+new_data <- leadership[, c(6:10)]
+new_data
+```
+
+变量名称
+
+```{r paged.print=FALSE}
+selected_vars <- c("q1", "q2", "q3", "q4", "q5")
+new_data <- leadership[selected_vars]
+new_data
+```
+
+```{r paged.print=FALSE}
+selected_vars <- paste("q", 1:5, sep="")
+new_data <- leadership[selected_vars]
+new_data
+```
+
+### 剔除（丢弃）变量
+
+变量名
+
+```{r}
+selected_vars <- names(leadership) %in% c("q3", "q4")
+selected_vars
+```
+
+```{r paged.print=FALSE}
+new_data <- leadership[!selected_vars]
+new_data
+```
+
+变量序号
+
+```{r paged.print=FALSE}
+new_data <- leadership[c(-8, -9)]
+new_data
+```
+
+设置为 `NULL`
+
+```{r paged.print=FALSE}
+leadership$q3 <- leadership$q4 <- NULL
+leadership
+```
+
+### 选入观测
+
+```{r}
+leadership <- data.frame(
+  manager,
+  date,
+  country,
+  gender,
+  age,
+  q1,
+  q2,
+  q3,
+  q4,
+  q5,
+  stringsAsFactors=FALSE
+)
+```
+
+序号
+
+```{r paged.print=FALSE}
+new_data <- leadership[1:3, ]
+new_data
+```
+
+条件筛选
+
+```{r paged.print=FALSE}
+new_data <- leadership[
+  leadership$gender=="M" &
+  leadership$age > 30,
+]
+new_data
+```
+
+```{r message=FALSE, paged.print=FALSE}
+attach(leadership)
+new_data <- leadership[
+  gender == "M" & age > 30,
+]
+detach(leadership)
+new_data
+```
+
+`which()` 函数
+
+```{r paged.print=FALSE}
+leadership$date <- as.Date(
+  leadership$date, 
+  "%m/%d/%y"
+)
+
+start_date <- as.Date("2009-01-01")
+end_date <- as.Date("2009-10-31")
+
+new_data <- leadership[
+  which(
+    leadership$date >= start_date & 
+    leadership$date <= end_date
+  ),
+]
+new_data
+```
+
+### `subset()` 函数
+
+```{r paged.print=FALSE}
+new_data <- subset(
+  leadership,
+  age >= 35 | age < 24,
+  select=c(q1, q2, q3, q4)
+)
+new_data
+```
+
+```{r paged.print=FALSE}
+new_data <- subset(
+  leadership,
+  gender == "M" & age > 25,
+  select=gender:q4
+)
+new_data
+```
+
+### 随机抽样
+
+`sample()`
+
+```{r paged.print=FALSE}
+sample_data <- leadership[
+  sample(
+    1:nrow(leadership),
+    3,
+    replace=FALSE
+  ),
+]
+sample_data
+```
+
+## 使用 SQL 语句操作数据框
+
+sqldf 包
+
+```{r}
+library(sqldf)
+```
+
+```{r paged.print=FALSE}
+df <- sqldf(
+  "select * from mtcars where carb=1 order by mpg",
+  row.names=TRUE
+)
+df
+```
+
+```{r paged.print=FALSE}
+sqldf(
+  paste(
+    "select avg(mpg) as avg_mpg, avg(disp) as avg_disp, gear from mtcars",
+    "where cyl in (4, 6) group by gear",
+    sep=" "
+  )
+)
+```
+

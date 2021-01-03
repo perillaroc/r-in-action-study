@@ -1,0 +1,438 @@
+---
+title: "高级数据管理"
+output: html_notebook
+---
+
+
+## 数值和字符处理函数
+
+### 统计函数
+
+```{r}
+x <- 1:8
+x
+```
+
+简化版本
+
+```{r}
+mean(x)
+```
+
+```{r}
+sd(x)
+```
+
+冗长版本
+
+```{r}
+n <- length(x)
+meanx <- sum(x) / n
+meanx
+```
+
+```{r}
+css <- sum((x - meanx)^2)
+sdx <- sqrt(css / (n - 1))
+sdx
+```
+
+`scale()` 函数
+
+```{r}
+scale(x)
+```
+
+### 概率函数
+
+- `d`：密度函数
+- `p`：分布函数
+- `q`：分位数函数
+- `r`：随机数
+
+```{r}
+runif(5)
+```
+
+```{r}
+runif(5)
+```
+
+`set.seed()` 设置随机数种子
+
+```{r}
+set.seed(1234)
+runif(5)
+```
+
+```{r}
+set.seed(1234)
+runif(5)
+```
+
+#### 多元正态数据
+
+MASS 包 `mvrnorm()` 函数
+
+```{r}
+library(MASS)
+options(digits=3)
+```
+
+
+```{r}
+mean <- c(230.7, 146.7, 3.6)
+sigma <- matrix(
+  c(
+    15360.8, 6721.2, -47.1,
+    6721.2, 4000.9, -16.5,
+    -47.1, -16.5, 0.3
+  ),
+  nrow=3,
+  ncol=3
+)
+```
+
+生成数据
+
+```{r}
+set.seed(1234)
+data <- mvrnorm(500, mean, sigma)
+data <- as.data.frame(data)
+names(data) <- c("y", "x1", "x2")
+```
+
+```{r}
+dim(data)
+```
+
+```{r paged.print=FALSE}
+head(data, n=10)
+```
+
+### 将函数应用与矩阵和数据框
+
+```{r}
+a <- 5
+sqrt(5)
+```
+
+```{r}
+b <- c(1.243, 5.654, 2.99)
+round(b)
+```
+
+```{r}
+c <- matrix(runif(12), nrow=3)
+c
+```
+
+```{r}
+log(c)
+```
+
+```{r}
+mean(c)
+```
+
+`apply()` 函数
+
+```{r}
+data <- matrix(rnorm(30), nrow=6)
+data
+```
+
+```{r}
+dim(data)
+```
+
+`1` 表示计算每行的值
+
+```{r}
+apply(data, 1, mean)
+```
+
+`2` 表示计算每列的值
+
+```{r}
+apply(data, 2, mean)
+```
+
+```{r}
+apply(data, 2, mean, trim=0.2)
+```
+
+## 一个数据处理难题
+
+```{r paged.print=FALSE}
+options(digits=2)
+
+Student <- c(
+  "John Davis", 
+  "Angela Williams", 
+  "Bullwinkle Moose",
+  "David Jones", 
+  "Janice Markhammer",
+  "Cheryl Cushing", 
+  "Reuven Ytzrhak",
+  "Greg Knox", 
+  "Joel England",
+  "Mary Rayburn"
+)
+
+math <- c(
+  502, 600, 
+  412, 358, 
+  495, 512, 
+  410, 625, 
+  573, 522
+)
+
+science <- c(
+  95, 99, 
+  80, 82, 
+  75, 85, 
+  80, 95, 
+  89, 86
+)
+
+english <- c(
+  25, 22, 
+  18, 15, 
+  20, 28, 
+  15, 30, 
+  27, 18
+)
+
+roster <- data.frame(
+  Student, 
+  math, 
+  science, 
+  english, 
+  stringsAsFactors=FALSE
+)
+roster
+```
+
+计算综合得分
+
+```{r paged.print=FALSE}
+z <- scale(roster[, 2:4])
+z
+```
+
+```{r paged.print=FALSE}
+score <- apply(z, 1, mean)
+roster <- cbind(roster, score)
+roster
+```
+
+评分
+
+```{r}
+y <- quantile(
+  score, 
+  c(.8, .6, .4, .2)
+)
+y
+```
+
+```{r paged.print=FALSE}
+roster$grade[score >= y[1]] <- "A"
+roster$grade[score < y[1] & score >= y[2]] <- "B"
+roster$grade[score < y[2] & score >= y[3]] <- "C"
+roster$grade[score < y[3] & score >= y[4]] <- "D"
+roster$grade[score < y[4]] <- "F"
+roster
+```
+
+按姓氏和名字排序
+
+```{r paged.print=FALSE}
+name <- strsplit((roster$Student), " ")
+last_name <- sapply(name, "[", 2)
+first_name <- sapply(name, "[", 1)
+roster <- roster[order(last_name, first_name),]
+roster
+```
+
+## 控制流
+
+```{r}
+feelings <- c("sad", "afraid")
+for (i in feelings) {
+  print(
+    switch(
+      i,
+      happy = "I am glad you are happy",
+      afraid = "There is nothing to fear",
+      sad = "Cheer up",
+      angry = "Calm down now"
+    )
+  )
+}
+```
+
+## 用户自编函数
+
+```{r}
+my_stats <- function(x, parametric=TRUE, print=FALSE) {
+  if (parametric) {
+    center <- mean(x)
+    spread <- sd(x)
+  } else {
+    center <- median(x)
+    spread <- mad(x)
+  }
+  
+  if (print & parametric) {
+    cat("Mean", center, "\n", "SD=", spread, "\n")
+  } else if (print & !parametric) {
+    cat("Median=", center, "\n", "MAD=", spread, "\n")
+  }
+  
+  result <- list(center=center, spread=spread)
+  return(result)
+}
+```
+
+
+```{r}
+set.seed(1234)
+x <- rnorm(500)
+```
+
+```{r}
+y <- my_stats(x)
+y
+```
+
+```{r}
+y <- my_stats(x, parametric=FALSE, print=TRUE)
+y
+```
+
+```{r}
+my_date <- function(type="long") {
+  switch(
+    type,
+    long = format(Sys.time(), "%A %B %d %Y"),
+    short = format(Sys.time(), "%m-%d-%y"),
+    cat(type, "is not a recognized type\n")
+  )
+}
+```
+
+```{r}
+my_date("long")
+```
+
+```{r}
+my_date("short")
+```
+
+```{r}
+my_date()
+```
+
+```{r}
+my_date("medium")
+```
+
+## 整合与重构
+
+aggregate and reshape
+
+```{r paged.print=FALSE}
+head(mtcars)
+```
+
+### 转置
+
+```{r paged.print=FALSE}
+cars <- mtcars[1:5, 1:4]
+cars
+```
+
+```{r paged.print=FALSE}
+t(cars)
+```
+
+### 整合数据
+
+```{r paged.print=FALSE}
+options(digits=3)
+attach(mtcars)
+agg_data <- aggregate(
+  mtcars,
+  by=list(cyl, gear),
+  FUN=mean,
+  na.rm=TRUE
+)
+detach(mtcars)
+agg_data
+```
+
+### reshape2
+
+示例数据，包括两个标识符变量 `ID` 和 `Time`，两个测量变量 `X1` 和 `X2`
+
+```{r paged.print=FALSE}
+my_data <- data.frame(
+  ID=c(1, 1, 2, 2),
+  Time=c(1, 2, 1, 2),
+  X1=c(5, 3, 6, 2),
+  X2=c(6, 5, 1, 4)
+)
+my_data
+```
+
+```{r}
+library(reshape2)
+```
+
+#### 融合 `melt()`
+
+每一行都是一个单独的测量，表示为：
+
+  唯一标识符 + 测量变量
+
+```{r paged.print=FALSE}
+md <- melt(my_data, id=c("ID", "Time"))
+md
+```
+
+#### 重铸 `dcast()`
+
+**不执行整合**
+
+相当于被重塑 (reshape)
+
+```{r paged.print=FALSE}
+dcast(md, ID + Time ~ variable)
+```
+
+```{r paged.print=FALSE}
+dcast(md, ID + variable ~ Time)
+```
+
+```{r paged.print=FALSE}
+dcast(md, ID ~ variable + Time)
+```
+
+**执行整合**
+
+附加整合函数，例如 `mean` 
+
+```{r paged.print=FALSE}
+dcast(md, ID ~ variable, mean.default)
+```
+
+```{r paged.print=FALSE}
+dcast(md, Time~variable, mean.default)
+```
+
+```{r paged.print=FALSE}
+dcast(md, ID~Time, mean.default)
+```
+

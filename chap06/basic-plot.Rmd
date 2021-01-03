@@ -1,0 +1,504 @@
+---
+title: "基本图形"
+output: html_notebook
+---
+
+## 条形图
+
+`vcd` 包的 `Arthritis` 数据集
+
+```{r}
+library(vcd)
+```
+
+```{r paged.print=FALSE}
+head(Arthritis)
+```
+
+### 简单条形图
+
+`barplot()` 函数
+
+```{r}
+counts <- table(Arthritis$Improved)
+counts
+```
+
+```{r fig.height=5, fig.width=5}
+barplot(
+  counts,
+  main="Simple Bar Plot",
+  xlab="Improvement",
+  ylab="Frequency"
+)
+```
+
+```{r fig.height=5, fig.width=5}
+barplot(
+  counts,
+  main="Simple Bar Plot",
+  xlab="Improvement",
+  ylab="Frequency",
+  horiz=TRUE
+)
+```
+
+因为 `Arthritis$Improved` 是因子变量，可以直接使用 `plot()` 绘制条形图，无需使用 `table()` 函数
+
+```{r fig.height=5, fig.width=5}
+plot(
+  Arthritis$Improved,
+  main="Simple Bar Plot",
+  xlab="Improvement",
+  ylab="Frequency",
+  horiz=TRUE
+)
+```
+
+## 堆砌条形图和分组条形图
+
+生成列联表
+
+```{r}
+counts <- table(
+  Arthritis$Improved,
+  Arthritis$Treatment
+)
+counts
+```
+
+```{r fig.height=5, fig.width=5}
+barplot(
+  counts,
+  main="Stacked Bar Plot",
+  xlab="Treatment",
+  ylab="Frequency",
+  col=c("red", "yellow", "green"),
+  legend=rownames(counts)
+)
+```
+
+```{r fig.height=5, fig.width=5}
+barplot(
+  counts,
+  main="Grouped Bar Plot",
+  xlab="Treatment",
+  ylab="Frequency",
+  col=c("red", "yellow", "green"),
+  legend=rownames(counts),
+  beside=TRUE
+)
+```
+
+### 均值条形图
+
+```{r}
+head(state.region)
+```
+
+
+```{r paged.print=FALSE}
+states <- data.frame(
+  state.region,
+  state.x77
+)
+head(states)
+```
+
+```{r paged.print=FALSE}
+means <- aggregate(
+  states$Illiteracy,
+  by=list(state.region),
+  FUN=mean
+)
+means
+```
+
+```{r paged.print=FALSE}
+means <- means[order(means$x),]
+means
+```
+
+`names.arg` 设置标签名称
+
+```{r fig.height=5, fig.width=5}
+barplot(
+  means$x,
+  names.arg=means$Group.1
+)
+title("Mean Illiteracy Rate")
+```
+
+### 条形图的微调
+
+```{r fig.height=5, fig.width=8}
+par(mar=c(5, 8, 4, 2))
+par(las=2)
+counts <- table(Arthritis$Improved)
+barplot(
+  counts,
+  main="Treatment Outcome",
+  horiz=TRUE,
+  cex.names=0.8,
+  names.arg=c(
+    "No Improvement",
+    "Some Improvement",
+    "Marked Improvement"
+  )
+)
+```
+
+### 棘状图
+
+spinogram
+
+```{r fig.height=5, fig.width=5}
+attach(Arthritis)
+counts <- table(Treatment, Improved)
+spine(
+  counts,
+  main="Spinogram Example"
+)
+detach(Arthritis)
+```
+
+## 饼图
+
+```{r}
+slices <- c(10, 12, 4, 16, 8)
+lbls <- c("US", "UK", "Australia", "Germany", "France")
+```
+
+```{r fig.height=5, fig.width=5}
+pie(
+  slices,
+  labels=lbls,
+  main="Simple Pie Chart"
+)
+```
+
+```{r fig.height=5, fig.width=5}
+pct <- round(slices/sum(slices)*100)
+lbls2 <- paste(lbls, " ", pct, "%", sep="")
+pie(
+  slices,
+  labels=lbls2,
+  col=rainbow(length(lbls2)),
+  main="Pie Chart with Percentages"
+)
+```
+
+```{r}
+library(plotrix)
+```
+
+```{r fig.height=5, fig.width=5}
+pie3D(
+  slices,
+  labels=lbls,
+  explode=0.1,
+  main="3D Pie Chart"
+)
+```
+
+```{r fig.height=5, fig.width=5}
+my_table <- table(state.region)
+lbls3 <- paste(names(my_table), "\n", my_table, sep="")
+pie(
+  my_table,
+  labels=lbls3,
+  main="Pie Chart from a Table\n (with sample sizes)"
+)
+```
+
+扇形图 fan plot
+
+```{r fig.height=4, fig.width=5}
+fan.plot(
+  slices,
+  labels=lbls,
+  main="Fan Plot"
+)
+```
+
+## 直方图
+
+```{r paged.print=FALSE}
+head(mtcars)
+```
+
+```{r}
+hist(mtcars$mpg)
+```
+
+`breaks` 指定分组数
+
+```{r}
+hist(
+  mtcars$mpg,
+  breaks=12,
+  col="red",
+  xlab="Miles Per Gallon",
+  main="Colored histogram with 12 bins"
+)
+```
+
+`rug()` 绘制轴须图 (rug plot)
+
+`density()` 生成密度曲线
+
+```{r}
+hist(
+  mtcars$mpg,
+  freq=FALSE,
+  breaks=12,
+  col="red",
+  xlab="Miles Per Gallon",
+  main="Histogram, rug plot, density curve"
+)
+rug(jitter(mtcars$mpg))
+lines(
+  density(mtcars$mpg),
+  col="blue",
+  lwd=2
+)
+```
+
+叠加正态曲线，`box()` 绘制框图
+
+```{r}
+x <- mtcars$mpg
+
+h <- hist(
+  x,
+  breaks=12,
+  col="red",
+  xlab="Miles Per Gallon",
+  main="Histogram with normal curve and box"
+)
+
+xfit <- seq(
+  min(x), max(x), length=40
+)
+yfit <- dnorm(
+  xfit,
+  mean=mean(x),
+  sd=sd(x)
+)
+yfit <- yfit * diff(h$mids[1:2]) * length(x)
+
+lines(
+  xfit,
+  yfit,
+  col="blue",
+  lwd=2
+)
+
+box()
+```
+
+## 核密度图
+
+
+
+```{r}
+d <- density(mtcars$mpg)
+d
+```
+
+```{r}
+plot(d)
+```
+
+
+```{r}
+plot(
+  d,
+  main="Kernel Density of Miles Per Gallon"
+)
+polygon(
+  d,
+  col="red",
+  border="blue"
+)
+rug(mtcars$mpg, col="brown")
+```
+
+`sm` 包 `sm.density.compare()` 函数比较组间差异
+
+```{r}
+library(sm)
+attach(mtcars)
+
+# 创建分组因子
+cyl.f <- factor(
+  cyl,
+  levels=c(4, 6, 8),
+  labels=c(
+    "4 cylinder",
+    "6 cylinder",
+    "8 cylinder"
+  )
+)
+
+# 绘制密度图
+sm.density.compare(
+  mpg,
+  cyl,
+  xlab="Miles Per Gallon"
+)
+title(main="MPG Distribution by Car Cylinders")
+
+# 添加图例
+colfill <- c(2:(1+length(levels(cyl.f))))
+legend("topright", levels(cyl.f), fill=colfill)
+
+detach(mtcars)
+```
+
+## 箱线图
+
+```{r fig.height=5, fig.width=5}
+boxplot(
+  mtcars$mpg,
+  main="Box plot",
+  ylab="Miles per Gallon"
+)
+```
+
+### 使用并列箱线图进行跨组比较
+
+```{r fig.height=5, fig.width=5}
+boxplot(
+  mpg ~ cyl,
+  data=mtcars,
+  main="Car Mileage Data",
+  xlab="Number of Cylinders",
+  ylab="Miles Per Gallon"
+)
+```
+
+```{r}
+boxplot(
+  mpg ~ cyl,
+  data=mtcars,
+  main="Car Mileage Data",
+  xlab="Number of Cylinders",
+  ylab="Miles Per Gallon",
+  horizontal=TRUE
+)
+```
+
+`varwidth=TRUE` 宽度与样本大小的平方根成正比
+
+`notch=TRUE` 含凹槽的箱线图
+
+```{r}
+boxplot(
+  mpg ~ cyl,
+  data=mtcars,
+  notch=TRUE,
+  varwidth=TRUE,
+  col="red",
+  main="Car Mileage Data",
+  xlab="Number of Cylinders",
+  ylab="Mile Per Gallon"
+)
+```
+
+多因子组合
+
+```{r}
+mtcars$cyl.f <- factor(
+  mtcars$cyl,
+  levels=c(4, 6, 8),
+  labels=c("4", "6", "8")
+)
+
+mtcars$am.f <- factor(
+  mtcars$am,
+  levels=c(0, 1),
+  labels=c("auto", "standard")
+)
+
+boxplot(
+  mpg ~ am.f * cyl.f,
+  data=mtcars,
+  varwidth=TRUE,
+  col=c("gold", "darkgreen"),
+  main="MPG Distribution by Auto Type",
+  xlab="Auto Type",
+  ylab="Miles Per Gallon"
+)
+```
+
+### 小提琴图
+
+violin plot
+
+白点是中位数，黑色盒形的范围是上下四分位点，细黑线表示须，外部形状是核密度估计
+
+`vioplot` 包的 `vioplot()` 函数
+
+```{r}
+library(vioplot)
+```
+
+
+```{r}
+x1 <- mtcars$mpg[mtcars$cyl == 4]
+x2 <- mtcars$mpg[mtcars$cyl == 6]
+x3 <- mtcars$mpg[mtcars$cyl == 8]
+vioplot(
+  x1, 
+  x2,
+  x3,
+  names=c("4 cyl", "6 cyl", "8 cyl"),
+  col="gold"
+)
+
+title(
+  "Violin Plots of Miles Per Gallon",
+  ylab="Miles Per Gallon",
+  xlab="Number of Cylinders"
+)
+```
+
+## 点图
+
+`dotchart()`
+
+```{r fig.height=6, fig.width=6}
+dotchart(
+  mtcars$mpg,
+  labels=row.names(mtcars),
+  cex=.7,
+  main="Gas Mileage for Car Models",
+  xlab="Miles Per Gallon"
+)
+```
+
+`group` 确定分组，`gcolor` 指定分组颜色
+
+```{r fig.height=8, fig.width=8}
+x <- mtcars[order(mtcars$mpg),]
+x$cyl <- factor(x$cyl)
+
+x$color[x$cyl == 4] <- "red"
+x$color[x$cyl == 6] <- "blue"
+x$color[x$cyl == 8] <- "darkgreen"
+
+dotchart(
+  x$mpg,
+  labels=row.names(x),
+  cex=.7,
+  groups=x$cyl,
+  gcolor="black",
+  color=x$color,
+  pch=19,
+  main="Gas Mileage for Car Models\ngrouped by cylinder",
+  xlab="Miles Per Gallon"
+)
+```
+
+  
