@@ -1,0 +1,748 @@
+---
+title: "基本统计分析"
+output: html_notebook
+---
+
+## 描述性统计分析
+
+mtcars 数据集中的三个连续变量
+
+mpg：每加仑汽油行驶英里数
+
+hp：马力
+
+wt：车重
+
+```{r paged.print=FALSE}
+selected_variables <- c("mpg", "hp", "wt")
+head(mtcars[selected_variables])
+```
+
+两个分类变量
+
+am：变速箱类型
+
+cyl：汽缸数
+
+### 方法云集
+
+```{r}
+summary(mtcars[selected_variables])
+```
+
+`sapply()` 函数格式
+
+```r
+sapply(x, FUN, options)
+```
+
+`fivenum()` 返回图基五数总括 (Tukey's five-number summary)
+
+```{r}
+sapply(
+  mtcars[selected_variables],
+  fivenum
+)
+```
+
+自定义统计函数
+
+> 在统计学中，峰度（Kurtosis）衡量实数随机变量概率分布的峰态。
+> 峰度高就意味着方差增大是由低频度的大于或小于平均值的极端差值引起的。
+>
+> -- wiki
+
+> 在概率论和统计学中，偏度衡量实数随机变量概率分布的不对称性。
+>
+> -- wiki
+
+```{r}
+my_stats <- function(x, na.omit=TRUE) {
+  if(na.omit) {
+    x <- x[!is.na(x)]
+  }
+  m <- mean(x)
+  n <- length(x)
+  s <- sd(x)
+  skew <- sum((x-m)^3/s^3)/n # 偏度 Skewness
+  kurt <- sum((x-m)^4/s^4)/n - 3 # 峰度 Kurtosis
+  return (
+    c(
+      n=n,
+      mean=m,
+      stdev=s,
+      skew=skew,
+      kurtosis=kurt
+    )
+  )
+}
+```
+
+```{r}
+sapply(mtcars[selected_variables], my_stats)
+```
+
+### 更多方法
+
+`Hmisc` 包中的 `describe()` 函数
+
+```{r}
+library(Hmisc)
+```
+
+```{r}
+describe(mtcars[selected_variables])
+```
+
+`pastecs` 包中的 `stat.desc()` 函数
+
+```{r}
+library(pastecs)
+```
+
+```{r paged.print=FALSE}
+stat.desc(mtcars[selected_variables])
+```
+
+`psych` 包中的 `describe()` 函数
+
+```{r}
+library(psych)
+```
+
+注：可以使用 `包名::函数名` 的方式访问被覆盖的函数
+
+```{r paged.print=FALSE}
+psych::describe(mtcars[selected_variables])
+```
+
+### 分组计算描述性统计量
+
+`aggregate()` 函数 `by` 参数
+
+```{r paged.print=FALSE}
+aggregate(
+  mtcars[selected_variables],
+  by=list(am=mtcars$am),
+  mean
+)
+```
+
+
+```{r paged.print=FALSE}
+aggregate(
+  mtcars[selected_variables],
+  by=list(am=mtcars$am),
+  sd
+)
+```
+
+`by()` 函数
+
+```{r}
+dstats <- function(x) {
+  return (sapply(x, my_stats))
+}
+
+by(
+  mtcars[selected_variables],
+  mtcars$am,
+  dstats
+)
+```
+
+### 分组计算的扩展
+
+`doBy` 包中的 `summaryBy()` 函数
+
+var1 + var2 + var3 + ... + varN ~ groupvar1 + groupvar2 + ... + groupvarN
+
+```{r}
+library(doBy)
+```
+
+```{r paged.print=FALSE}
+summaryBy(
+  mpg + hp + wt ~ am,
+  data=mtcars,
+  FUN=my_stats
+)
+```
+
+`psych` 包中的 `describeBy()` 函数
+
+```{r paged.print=FALSE}
+describeBy(
+  mtcars[selected_variables],
+  list(am=mtcars$am)
+)
+```
+
+### 结果的可视化
+
+直方图
+
+密度图
+
+箱线图
+
+点图
+
+## 频数表和列联表
+
+使用 `vcd` 包中的 `Arthritis` 数据集
+
+```{r}
+library(vcd)
+```
+
+
+```{r paged.print=FALSE}
+head(Arthritis)
+```
+
+### 生成频数表
+
+#### 一维列联表
+
+`table()` 生成频数统计表
+
+```{r}
+one_d_table <- with(
+  Arthritis,
+  table(Improved)
+)
+one_d_table
+```
+
+`prop.table()` 将频数统计表转为比例值
+
+```{r}
+prop.table(my_table)
+```
+
+```{r}
+prop.table(my_table) * 100
+```
+
+#### 二维列联表
+
+```{r}
+table(
+  Arthritis$Treatment, # 行
+  Arthritis$Improved   # 列
+)
+```
+
+`xtabs()` 函数
+
+```{r}
+my_table <- xtabs(
+  ~ Treatment + Improved,
+  data=Arthritis
+)
+my_table
+```
+
+`margin.table()` 生成边际频数
+
+1 表示每行生成一个边际值，即为第 1 个维度生成边际值
+
+```{r}
+margin.table(my_table, 1)
+```
+
+```{r}
+margin.table(my_table, 2)
+```
+
+`prop.table()` 生成比例
+
+1 表示沿行生成比例，即沿第一个维度计算比例
+
+```{r}
+prop.table(my_table, 1)
+```
+
+```{r}
+prop.table(my_table, 2)
+```
+
+`addmargins()` 添加边际和
+
+```{r}
+addmargins(my_table)
+```
+
+1 表示行，2 表示列。
+
+下面代码中的 1 表示按行求比例，即每行所有数值加和为 1
+
+2 表示添加列方向的累加和，也就是为每行添加一个累加值
+
+```{r}
+addmargins(
+  prop.table(
+    my_table, 
+    1
+  ),
+  2
+)
+```
+
+```{r}
+addmargins(
+  prop.table(
+    my_table, 
+    2
+  ), 
+  1
+)
+```
+
+`gmodels` 包中的 `CrossTable()` 函数
+
+```{r}
+library(gmodels)
+```
+
+```{r}
+CrossTable(
+  Arthritis$Treatment, 
+  Arthritis$Improved
+)
+```
+
+#### 多维列联表
+
+```{r}
+my_table <- xtabs(
+  ~ Treatment + Sex + Improved,
+  data=Arthritis
+)
+my_table
+```
+
+`ftable()` 以一种更紧凑的形式输出多维列联表
+
+```{r}
+ftable(my_table)
+```
+
+边际频数
+
+```{r}
+margin.table(
+  my_table,
+  1
+)
+```
+
+```{r}
+margin.table(
+  my_table,
+  2
+)
+```
+
+```{r}
+margin.table(
+  my_table,
+  3
+)
+```
+
+多维边际频数
+
+```{r}
+margin.table(
+  my_table, 
+  c(1, 3)
+)
+```
+
+比例
+
+```{r}
+ftable(
+  prop.table(
+    my_table, 
+    c(1, 2)
+  )
+)
+```
+
+```{r}
+ftable(
+  addmargins(
+    prop.table(
+      my_table, 
+      c(1, 2)
+    ),
+    3  # 为第三维 (Improved) 增加列加和
+  )
+) * 100
+```
+
+### 独立性检验
+
+#### 卡方独立检验
+
+卡方检验适用于计数数据，可以检验数据与预期分布的拟合程度。
+在统计实践中，卡方统计量的最常见用法是与 r x c 列联表一起使用，以评估对变量间独立性的零假设是否合理。
+
+> 引自 [1]
+
+`chisq.test()`
+
+下面示例显示治疗情况和改善情况不独立 (p值太小)
+
+```{r}
+my_table <- xtabs(
+  ~ Treatment + Improved,
+  data=Arthritis
+)
+my_table
+```
+
+```{r}
+chisq.test(my_table)
+```
+
+p 值表示从总体中抽取的样本行变量与列变量是相互独立的概率。
+
+下面示例显示性别和改善情况独立
+
+```{r}
+my_table <- xtabs(
+  ~ Improved + Sex,
+  data=Arthritis
+)
+my_table
+```
+
+```{r}
+chisq.test(my_table)
+```
+
+#### Fisher 精确检验
+
+可以实际列出所有可能出现的重排 (置换) 情况及其频数，进而确定观测结果的极端程度。
+这一操作被称为费舍尔精确检验 (Fisher's exact test)。
+
+> 引自 [1]
+
+```{r}
+my_table <- xtabs(
+  ~ Treatment + Improved,
+  data=Arthritis
+)
+my_table
+```
+
+```{r}
+fisher.test(my_table)
+```
+
+#### Cochran-Mantel-Haenszel 卡方检验
+
+假设两个名义变量在第三个变量的每一层中都是条件独立的。
+
+下面代码假设不存在三阶交互作用 (治疗情况 x 改善情况 x 性别)
+
+```{r}
+my_table <- xtabs(
+  ~ Treatment + Improved + Sex,
+  data=Arthritis
+)
+ftable(my_table)
+```
+
+结果表明，治疗与得到的改善在性别的每一水平下并不独立
+
+```{r}
+mantelhaen.test(my_table)
+```
+
+### 相关性的度量
+
+`vcd` 包的 `assocstats()` 函数
+
+计算二维列联表的 phi 系数，列联系数和 Cramer's V 系数
+
+```{r}
+my_table <- xtabs(
+  ~ Treatment + Improved,
+  data=Arthritis
+)
+my_table
+```
+
+```{r}
+assocstats(my_table)
+```
+
+### 结果的可视化
+
+条形图
+
+马赛克图
+
+关联图
+
+...
+
+## 相关
+
+相关系数
+
+```{r paged.print=FALSE}
+head(state.x77)
+```
+
+### 相关的类型
+
+#### 相关系数
+
+Pearson 积差相关系数衡量两个定量变量之间的线性相关程度。
+
+Spearman 等级相关系数衡量分级定序变量之间的相关程度。
+
+Kendall's Tau 相关系数是一种非参数的等级相关度量。
+
+`cov()` 计算协方差
+
+`cor()` 计算相关系数
+
+`use`：`all.obs`，`everything`，`complete.obs`，`pairwise.complete.obs`
+
+`method`: `pearson`，`spearman`，`kendall`
+
+默认参数 `use="everything", method="pearson"`
+
+```{r}
+states <- state.x77[, 1:6]
+cov(states)
+```
+
+Pearson 积差相关系数
+
+```{r}
+cor(states)
+```
+
+Spearman 等级相关系数
+
+```{r}
+cor(states, method="spearman")
+```
+
+非方形的相关矩阵
+
+```{r}
+x <- states[, c(
+  "Population", 
+  "Income",
+  "Illiteracy",
+  "HS Grad"
+)]
+y <- states[, c(
+  "Life Exp",
+  "Murder"
+)]
+cor(x, y)
+```
+
+#### 偏相关
+
+偏相关是指在控制一个或多个定量变量时，另外两个定量变量之间的相互关系。
+
+`ggm` 包中的 `pcor()` 函数
+
+```{r}
+library(ggm)
+```
+
+```{r}
+colnames(states)
+```
+
+`u` 中前两个数值表示计算相关向量的下标，其余数值为条件变量下标
+
+```
+pcor(u, S)
+```
+
+```{r}
+pcor(
+  c(1, 5, 2, 3, 6), 
+  cov(states)
+)
+```
+
+#### 其他类型的相关
+
+`polycor` 包中的 `hetcor()` 计算一种混合的相关矩阵
+
+```{r}
+library(polycor)
+```
+
+```{r paged.print=FALSE}
+hetcor(states)
+```
+
+### 相关性的显著性检验
+
+常用原假设为变量间不相关（即总体的相关系数为0）
+
+`cor.test()`
+
+`alternative`：`two.side`，`less`，`greater`
+
+`method`：`pearson`，`kendall`，`spearman`
+
+```{r}
+cor.test(states[,3], states[,5])
+```
+
+`psych` 包中 `corr.test()` 函数
+
+```{r}
+corr.test(
+  states, 
+  use="complete"
+)
+```
+
+其他显著性检验
+
+`ggm` 包的 `pcor.test()` 函数
+
+`psych` 包的 `r.test()` 函数
+
+### 相关关系的可视化
+
+散点图和散点图矩阵
+
+相关图 (correlogram)
+
+## t 检验
+
+本节关注的变量为连续型的组间比较，假设其呈正态分布
+
+```{r}
+library(MASS)
+```
+
+```{r paged.print=FALSE}
+head(UScrime)
+```
+
+- `Prob`：监禁的概率
+- `U1`：14-24 岁年龄段城市男性失业率
+- `U2`：35-39 岁年龄段城市男性失业率
+- `So`：分类变量，是否为南方州
+
+### 独立样本的 t 检验
+
+```{r}
+t.test(
+  Prob ~ So,
+  data=UScrime
+)
+```
+
+可以拒绝南方各州和非南方各州拥有相同监禁概率的假设 (p < 0.001)
+
+### 非独立样本的 t 检验
+
+非独立组设计 dependent groups design
+
+```{r}
+sapply(
+  UScrime[c("U1", "U2")],
+  function(x) (c(mean=mean(x), sd=sd(x)))
+)
+```
+
+```{r}
+with(
+  UScrime,
+  t.test(U1, U2, paried=TRUE)
+)
+```
+
+### 多于两组的情况
+
+方差分析（NOAA）：第 9 章
+
+## 组间差异的非参数检验
+
+### 两组的比较
+
+两组数据独立，可以使用 Wilcoxon 秩和检验 (Mann-Whitney U 检验) 评估观测是否是从相同的概率分布中抽得的。
+
+```{r}
+with(
+  UScrime,
+  by(Prob, So, median)
+)
+```
+
+```{r}
+wilcox.test(
+  Prob ~ So,
+  data=UScrime
+)
+```
+
+Wilcoxon 符号秩检验是非独立样本 t 检验的一种非参数替代方法，适用于两组成对数据和无法保证正态性假设的情境。
+
+```{r}
+sapply(
+  UScrime[c("U1", "U2")],
+  median
+)
+```
+
+```{r}
+with(
+  UScrime,
+  wilcox.test(
+    U1, U2,
+    paired=TRUE
+  )
+)
+```
+
+### 多于两组的比较
+
+单向设计 one-way design
+
+各组独立：Kruskal-Wallis 检验
+
+各组不独立：Friedman 检验
+
+```{r paged.print=FALSE}
+states <- data.frame(
+  state.region,
+  state.x77
+)
+head(states)
+```
+
+```{r}
+kruskal.test(
+  Illiteracy ~ state.region,
+  data=states
+)
+```
+
+## 组件差异的可视化
+
+箱线图
+
+核密度图
+
+第 9 章和第 19 章介绍的图形
