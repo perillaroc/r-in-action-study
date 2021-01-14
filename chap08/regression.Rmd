@@ -1,0 +1,822 @@
+---
+title: "回归"
+output: html_notebook
+---
+
+## 回归的多面性
+
+- 简单线性
+- 多项式
+- 多层
+- 多元线性
+- 多变量
+- Logistic
+- 泊松
+- Cox比例风险
+- 时间序列
+- 非线性
+- 非参数
+- 稳健
+
+普通最小二乘 (OLS) 回归法，包括简单线性回归，多项式回归和多元线性回归。
+
+### OLS 回归的适用情景
+
+- 发现有趣的问题
+- 设计一个有用的、可以测量的响应变量
+- 收集合适的数据
+
+### 基础回顾
+
+## OLS 回归
+
+$$
+\hat{Y_i}=\hat{\beta_0} + \hat{\beta_1}X_{1i} + ... + \hat{\beta_k}X_{ki}
+$$
+
+残差平方和最小
+
+$$
+\sum_{i=1}^{n}(Y_i-\hat{Y_i})^2=\sum_{i=1}^{n}(Y_i-\hat{\beta_0}+\hat{\beta_1}X_{1i}+...+\hat{\beta_k}X_{ki})=\sum_{i=1}^{n}\epsilon_i^2
+$$
+
+统计假设
+
+- 正态性：对于固定的自变量值，因变量值成正态分布
+- 独立性：Y_i 值之间相互独立
+- 线性：因变量与自变量之间为线性相关
+- 同方差性：因变量的方差不随自变量的水平不同而变化
+
+### 用 `lm()` 拟合回归模型
+
+简单线性回归
+
+多项式回归
+
+多元线性回归
+
+### 简单线性回归
+
+数据集
+
+```{r paged.print=FALSE}
+head(women)
+```
+
+`summary()` 函数
+
+```{r}
+fit <- lm(
+  weight ~ height, 
+  data=women
+)
+summary(fit)
+```
+
+目标值
+
+```{r}
+women$weight
+```
+
+`fitted()` 函数计算预测值
+
+```{r}
+fitted(fit)
+```
+
+`residuals()` 函数返回残差
+
+```{r}
+residuals(fit)
+```
+
+`abline()` 绘制拟合直线
+
+```{r}
+plot(
+  women$height,
+  women$weight,
+  xlab="Height (in inches)",
+  ylab="Weight (in pounds)"
+)
+abline(fit)
+```
+
+### 多项式回归
+
+```{r}
+fit2 <- lm(
+  weight ~ height + I(height^2),
+  data=women
+)
+summary(fit2)
+```
+
+```{r}
+plot(
+  women$height,
+  women$weight,
+  xlab="Height (in inches)",
+  ylab="Weight (in lbs)"
+)
+lines(women$height, fitted(fit2))
+```
+
+`car` 包的 `scatterplot()` 函数
+
+```{r}
+library(car)
+```
+
+```{r}
+scatterplot(
+  weight ~ height,
+  data=women,
+  smooth=list(lty=2),
+  pch=19,
+  main="Women Age 30-39",
+  xlab="Height (in inches)",
+  ylab="Weight (in lbs)"
+)
+```
+
+### 多元线性回归
+
+```{r}
+head(state.x77)
+```
+
+```{r paged.print=FALSE}
+states <- as.data.frame(
+  state.x77[,c(
+    "Murder",
+    "Population",
+    "Illiteracy",
+    "Income",
+    "Frost"
+  )]
+)
+head(states)
+```
+
+`cor()` 检查相关性
+
+```{r}
+cor(states)
+```
+
+`car` 包的 `scatterplotMatrix()` 函数
+
+```{r fig.height=8, fig.width=8}
+scatterplotMatrix(
+  states,
+  smooth=list(lty=2),
+  main="Scatter Plot Matrix"
+)
+```
+
+```{r}
+fit_multi <- lm(
+  Murder ~ Population + Illiteracy + Income + Frost,
+  data=states
+)
+summary(fit_multi)
+```
+
+### 有交互项的多元线性回归
+
+```{r}
+fit_inter <- lm(
+  mpg ~ hp + wt + hp:wt,
+  data=mtcars
+)
+summary(fit_inter)
+```
+
+`effects` 包中的 `effect()` 函数
+
+```{r}
+library(effects)
+```
+
+展示 wt 取 3 个值时，mpg 和 hp 的关系
+
+
+```{r fig.height=8, fig.width=8}
+plot(
+  effect(
+    "hp:wt",
+    fit_inter,
+    xlevels=list(
+      wt=c(2.2, 3.2, 4.2)
+    )
+  ),
+  multiline=TRUE
+)
+```
+
+## 回归诊断
+
+`confint()` 函数
+
+```{r}
+confint(fit_multi)
+```
+
+回归诊断技术
+
+### 标准方法
+
+```{r}
+fit <- lm(
+  weight ~ height,
+  data=women
+)
+summary(fit)
+```
+
+`plot()` 函数生成 4 幅图
+
+```{r}
+plot(fit)
+```
+
+**残差与拟合图**
+
+Residuals vs Fitted
+
+线性。如果满足，残差值与拟合值没有任何关联
+
+**正态 Q-Q 图**
+
+Normal Q-Q
+
+正态性。如果满足，残差值应该是均值为 0 的正态分布，沿 45 度角直线分布
+
+**位置尺度图**
+
+Scale-Location Graph
+
+同方差性。如果满足，水平线周围点应该随机分布
+
+**残差与杠杆图**
+
+Residuals vs Leverage
+
+鉴别离群点，杠杆点和强影响点
+
+```{r}
+fit2 <- lm(
+  weight ~ height + I(height^2),
+  data=women
+)
+summary(fit2)
+```
+
+```{r}
+plot(fit2)
+```
+
+```{r}
+newfit <- lm(
+  weight ~ height + I(height^2),
+  data=women[-c(13, 15)]
+)
+summary(newfit)
+```
+
+```{r}
+fit <- lm(
+  Murder ~ Population + Illiteracy + Income + Frost,
+  data=states
+)
+summary(fit)
+```
+
+```{r}
+plot(fit)
+```
+
+### 改进方法
+
+`car` 包，`gvlma` 包
+
+```{r}
+fit <- lm(
+  Murder ~ Population + Illiteracy + Income + Frost,
+  data=states
+)
+```
+
+#### 正态性
+
+`car::qqPlot()`
+
+```{r}
+qqPlot(
+  fit,
+  labels=row.names(states),
+  id.method="identify",
+  simulate=TRUE,
+  main="Q-Q Plot"
+)
+```
+
+```{r paged.print=FALSE}
+states["Nevada",]
+```
+
+```{r}
+fitted(fit)["Nevada"]
+```
+
+```{r}
+residuals(fit)["Nevada"]
+```
+
+```{r}
+rstudent(fit)["Nevada"]
+```
+
+下面函数生成学生化残差的柱状图
+
+```{r}
+residplot <- function(fit, nbreaks=10) {
+  z <- rstudent(fit)
+  hist(
+    z,
+    breaks=nbreaks,
+    freq=FALSE,
+    xlab="Studentized Residual",
+    main="Distribution of Error"
+  )
+  rug(
+    jitter(z),
+    col="brown"
+  )
+  curve(
+    dnorm(
+      x,
+      mean=mean(z),
+      sd=sd(z)
+    ),
+    add=TRUE,
+    col="blue",
+    lwd=2
+  )
+  lines(
+    density(z)$x,
+    density(z)$y,
+    col="red",
+    lwd=2,
+    lty=2
+  )
+  legend(
+    "topright",
+    legend=c("Normal Curve", "Kernel Density Curve"),
+    lty=1:2,
+    col=c("blue", "red"),
+    cex=.7
+  )
+}
+```
+
+```{r}
+residplot(fit)
+```
+
+#### 误差的独立性
+
+Durbin-Watson 检验
+
+`car` 包的 `durbinWastsonTest()` 函数
+
+```{r}
+durbinWatsonTest(fit)
+```
+
+p 不显著 (p=0.254)，说明无自相关性，误差项之间独立
+
+#### 线性
+
+成分残差图 component plus residual plot，偏残差图 partial residual plot
+
+`car` 包的 `crPlots()` 函数
+
+```{r}
+crPlots(fit)
+```
+
+如果图形存在非线性，说明建模不够充分
+
+#### 同方差性
+
+`car` 包的 `ncvTest()` 函数
+
+零假设为误差方差不变
+
+```{r}
+ncvTest(fit)
+```
+
+p 值不显著，说明满足零假设，即满足方差不变假设
+
+`car` 包的 `spreadLevelPlot()` 函数
+
+```{r}
+spreadLevelPlot(fit)
+```
+
+### 线性模型假设的综合验证
+
+`gvlma` 包中的 `gvlma()` 函数
+
+```{r}
+library(gvlma)
+```
+
+```{r paged.print=FALSE}
+gvmodel <- gvlma(fit)
+summary(gvmodel)
+```
+
+### 多重共线性
+
+VIF，Variance Inflation Factor，方差膨胀因子
+
+`car` 包的 `vif()` 函数
+
+```{r}
+vif(fit)
+```
+
+一般原则，\sqrt{vif} > 2 表明存在多重共线性问题
+
+```{r}
+sqrt(vif(fit)) > 2
+```
+
+## 异常观测值
+
+### 离群点
+
+粗糙判断的两种方法：
+
+- Q-Q 图中落在置信区间带外的点
+- 标准化残差值大于 2 或者小于 -2
+
+`car` 包的 `outlierTest()` 函数
+
+```{r paged.print=FALSE}
+outlierTest(fit)
+```
+
+### 高杠杆点
+
+帽子统计量，hat statistic
+
+帽子值大于帽子均值的 2 或 3 倍，帽子均值为 `p/n`
+
+```{r}
+hat.plot <- function(fit) {
+  p <- length(coefficients(fit))
+  n <- length(fitted(fit))
+  plot(
+    hatvalues(fit),
+    main="Index Plot of Hat Values"
+  )
+  abline(
+    h=c(2, 3)*p/n,
+    col="red",
+    lty=2
+  )
+}
+```
+
+```{r}
+hat.plot(fit)
+```
+
+### 强影响点
+
+两种检测方法：
+
+- Cook 距离，D 统计量，大于 `4/(n-k-1)`
+- 变量添加图，added variable plot
+
+```{r}
+cutoff <- 4 / (
+  nrow(states) - length(fit$coefficients) - 2
+)
+plot(
+  fit,
+  which=4,
+  cook.levels=cutoff
+)
+abline(
+  h=cutoff,
+  lty=2,
+  col="red"
+)
+```
+
+`car` 包的 `avPlot()` 函数
+
+```{r fig.height=6, fig.width=6}
+avPlots(
+  fit,
+  ask=FALSE
+)
+```
+
+`car` 包的 `influencePlot()` 函数
+
+```{r fig.height=6, fig.width=6, paged.print=FALSE}
+influencePlot(
+  fit,
+  main="Influence Plot",
+  sub="Circle size if proportional to Cook's distance"
+)
+```
+
+纵坐标大于 +2 或小于 -2 的点是离群点。
+
+横坐标大于 0.2 或 0.3 的点是高杠杆点。
+
+圆圈很大的点是强影响点。
+
+## 改进措施
+
+### 删除观测点
+
+谨慎删除离群点和强影响点
+
+### 变量变换
+
+`car` 包的 `powerTransform()` 函数通过 lambda 的最大似然估计来正态化变量 X^{lambda}
+
+```{r paged.print=FALSE}
+summary(
+  powerTransform(states$Murder)
+)
+```
+
+`car` 包的 `boxTidwell()` 函数最大似然估计预测变量幂数
+
+```{r}
+boxTidwell(
+  Murder ~ Population + Illiteracy,
+  data=states
+)
+```
+
+
+### 删增变量
+
+删除变量方法举例：
+
+- 删除某个多重共线性的变量
+- 岭回归
+
+### 尝试其他方法
+
+存在离群点和/或强影响点：稳健回归模型
+
+违背正态性假设：非参数回归模型
+
+显著的非线性：非线性回归模型
+
+违背误差独立性假设：时间序列模型，多层次回归模型。。。
+
+广义线性模型
+
+## 选择“最佳”的回归模型
+
+### 模型比较
+
+`anova()` 函数比较两个嵌套模型的拟合优度
+
+```{r}
+fit1 <- lm(
+  Murder ~ Population + Illiteracy + Income + Frost,
+  data=states
+)
+fit2 <- lm(
+  Murder ~ Population + Illiteracy,
+  data=states
+)
+
+anova(fit2, fit1)
+```
+
+赤池信息准则（AIC，Akaike Information Criterion）
+
+AIC 较小的模型优先选择
+
+```{r paged.print=FALSE}
+fit1 <- lm(
+  Murder ~ Population + Illiteracy + Income + Frost,
+  data=states
+)
+fit2 <- lm(
+  Murder ~ Population + Illiteracy,
+  data=states
+)
+AIC(fit1, fit2)
+```
+
+### 变量选择
+
+#### 逐步回归法
+
+stepwise method
+
+向前逐步回归 forward stepwise regression
+
+向后逐步回归 backward stepwise regression
+
+向前向后逐步回归，逐步回归，stepwise stepwise regression
+
+`MASS` 包中的 `stepAIC()` 函数
+
+```{r}
+library(MASS)
+```
+
+```{r}
+fit <- lm(
+  Murder ~ Population + Illiteracy + Income + Frost,
+  data=states
+)
+stepAIC(fit, direction="backward")
+```
+
+#### 全子集回归
+
+`leaps` 包的 `regsubsets()` 函数
+
+R 平方
+
+调整 R 平方
+
+Mallows Cp 统计量
+
+```{r}
+library(leaps)
+```
+
+```{r}
+leaps <- regsubsets(
+  Murder ~ Population + Illiteracy + Income + Frost,
+  data=states,
+  nbest=4
+)
+summary(leaps)
+```
+
+每一行表示一个组合，变量是色块对应的横坐标
+
+```{r fig.height=8, fig.width=8}
+plot(leaps, scale="adjr2")
+```
+
+`car` 包的 `subsets()` 函数
+
+越好的模型越接近直线
+
+```{r}
+subsets(
+  leaps,
+  statistic="cp",
+  main="Cp Plot for All Subsets Regression",
+  legend="topright"
+)
+abline(
+  1, 1,
+  lty=2,
+  col="red"
+)
+```
+
+
+## 深层次分析
+
+### 交叉验证
+
+模型泛化能力
+
+k 重交叉验证
+
+`bootstrap` 包的 `crossval()` 函数
+
+```{r}
+shrinkage <- function(fit, k=10) {
+  require(bootstrap)
+  theta.fit <- function(x, y)(lsfit(x, y))
+  theta.predict <- function(fit, x){
+    cbind(1, x)%*%fit$coefficients
+  }
+  
+  x <- fit$model[, 2:ncol(fit$model)]
+  y <- fit$model[, 1]
+  
+  results <- crossval(
+    x, y,
+    theta.fit,
+    theta.predict,
+    ngroup=k
+  )
+  
+  r2 <- cor(
+    y,
+    fit$fitted.values
+  )^2
+  
+  r2cv <- cor(
+    y,
+    results$cv.fit
+  )^2
+  
+  cat("Original R-square =", r2, "\n")
+  cat(k, "Fold Cross-Validated R-square = ", r2cv, "\n")
+  cat("Change =", r2 - r2cv, "\n")
+}
+```
+
+```{r}
+fit <- lm(
+  Murder ~ Population + Income + Illiteracy + Frost,
+  data=states
+)
+shrinkage(fit)
+```
+
+```{r}
+fit2 <- lm(
+  Murder ~ Population + Illiteracy,
+  data=states
+)
+shrinkage(fit2)
+```
+
+### 相对重要性
+
+归一化
+
+```{r}
+zstates <- as.data.frame(scale(states))
+zfit <- lm(
+  Murder ~ Population + Income + Illiteracy + Frost,
+  data=zstates
+)
+coef(zfit)
+```
+
+相对权重，relative weight，对所有可能子模型添加一个预测变量引起的 R 平方平均增加量的一个近似值
+
+```{r}
+relweights <- function(fit, ...) {
+  R <- cor(fit$model)
+  nvar <- ncol(R)
+  
+  rxx <- R[2:nvar, 2:nvar]
+  rxy <- R[2:nvar, 1]
+  
+  svd <- eigen(rxx)
+  evec <- svd$vectors
+  ev <- svd$values
+  delta <- diag(sqrt(ev))
+  lambda <- evec %*% delta %*% t(evec)
+  lambdasq <- lambda^2
+  
+  beta <- solve(lambda) %*% rxy
+  rsquare <- colSums(beta ^ 2)
+  rawwgt <- lambdasq %*% beta ^ 2
+  
+  import <- (rawwgt / rsquare) * 100
+  import <- as.data.frame(import)
+  row.names(import) <- names(fit$model[2:nvar])
+  names(import) <- "Weights"
+  import <- import[order(import), 1, drop=FALSE]
+  dotchart(
+    import$Weights,
+    labels=row.names(import),
+    xlab="% of R-Square",
+    pch=19,
+    main="Relative Importance of Predictor Variables",
+    sub=paste("Total R-Square=", round(rsquare, digits=3)),
+    ...
+  )
+  return(import)
+}
+```
+
+
+```{r paged.print=FALSE}
+fit <- lm(
+  Murder ~ Population + Illiteracy + Income + Frost,
+  data=states
+)
+relweights(fit, col="blue")
+```
