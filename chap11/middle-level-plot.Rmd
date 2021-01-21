@@ -1,0 +1,232 @@
+---
+title: "中级绘图"
+output: html_notebook
+---
+
+## 散点图
+
+```{r}
+attach(mtcars)
+plot(
+  wt, mpg,
+  main="Basic Scatter plot of MPG vs. Weight",
+  xlab="Car Weight (lbs/1000)",
+  ylab="Miles Per Gallon", 
+  pch=19
+)
+abline(
+  lm(mpg~wt),
+  col="red",
+  lwd=2,
+  lty=1
+)
+lines
+detach(mtcars)
+```
+
+`car` 包的 `scatterplot()` 函数
+
+```{r}
+library(car)
+```
+
+```{r}
+scatterplot(
+  mpg ~ wt | cyl,
+  data=mtcars,
+  lwd=2,
+  smooth=list(span=0.75),
+  main="Scatter Plot of MPG vs. Weight by # Cylinders",
+  xlab="Weight of Car (lbs/1000)",
+  ylab="Miles Per Gallon",
+  legend=TRUE,
+  boxplots="xy"
+)
+```
+
+### 散点图矩阵
+
+`pairs()` 函数
+
+```{r fig.height=6, fig.width=6}
+pairs(
+  ~mpg + disp + drat + wt,
+  data=mtcars,
+  main="Basic Scatter Plot Matrix"
+)
+```
+
+`car` 包的 `scatterplotMatrix()` 函数
+
+```{r fig.height=8, fig.width=8}
+scatterplotMatrix(
+  ~ mpg + disp + drat + wt,
+  data=mtcars,
+  smooth=list(smoother=loessLine, lty.smooth=2, spread=FALSE),
+  main="Scatter Plot Matrix via car Package"
+)
+```
+
+```{r}
+library(HH)
+```
+
+```{r}
+xysplom(
+  mpg ~ disp + drat + wt,
+  data=mtcars,
+  corr=TRUE
+)
+```
+
+### 高密度散点图
+
+```{r paged.print=FALSE}
+set.seed(1234)
+n <- 10000
+c1 <- matrix(
+  rnorm(n, mean=0, sd=.5),
+  ncol=2
+)
+c2 <- matrix(
+  rnorm(n, mean=3, sd=2),
+  ncol=2
+)
+my_data <- rbind(c1, c2)
+my_data <- as.data.frame(my_data)
+names(my_data) <- c("x", "y")
+head(my_data)
+```
+
+```{r}
+with(
+  my_data,
+  plot(
+    x, y,
+    pch=19,
+    main="Scatter Plot with 10,000 Observations"
+  )
+)
+```
+
+`smoothScatter()` 函数
+
+```{r}
+with(
+  my_data,
+  smoothScatter(
+    x, y,
+    main="Scatter Plot Colored by Smoothed Densities"
+  )
+)
+```
+
+`hexbin` 包的 `hexbin()` 函数
+
+```{r}
+library(hexbin)
+```
+
+```{r fig.height=6, fig.width=6}
+with(
+  my_data,
+  {
+    bin <- hexbin(
+      x, y,
+      xbins=50
+    )
+    plot(
+      bin,
+      main="Hexagonal Binning with 10,000 Observations"
+    )
+  }
+)
+```
+
+```{r}
+library(IDPmisc)
+```
+
+```{r fig.height=6, fig.width=6}
+ipairs(my_data, pixs=1)
+```
+
+### 三维散点图
+
+`scatterplot3d` 包中的 `scatterplot3d()` 函数
+
+```{r}
+library(scatterplot3d)
+```
+
+```{r fig.height=6, fig.width=6}
+attach(mtcars)
+scatterplot3d(
+  wt, disp, mpg,
+  main="Basic 3D Scatter Plot"
+)
+detach(mtcars)
+```
+
+```{r fig.height=6, fig.width=6}
+with(
+  mtcars,
+  scatterplot3d(
+    wt, disp, mpg,
+    pch=16,
+    highlight.3d=TRUE,
+    type="h",
+    main="3D Scatter Plot with Verical Lines"
+  )
+)
+```
+
+```{r fig.height=6, fig.width=6}
+with(
+  mtcars,
+  {
+    s3d <- scatterplot3d(
+      wt, disp, mpg,
+      pch=16,
+      highlight.3d=TRUE,
+      type="h",
+      main="3D Scatter Plot with Vertical LInes and Regression Plane"
+    )
+    fit <- lm(mpg ~ wt + disp)
+    s3d$plane3d(fit)
+  }
+)
+```
+
+### 旋转三维散点图
+
+`rgl` 包中的 `plot3d()` 函数
+
+```{r}
+library(rgl)
+```
+
+```{r}
+with(
+  mtcars,
+  plot3d(
+    wt, disp, mpg,
+    col="red",
+    size=5
+  )
+)
+```
+
+`car` 包中的 `scatter3d()` 函数
+
+```{r}
+with(
+  mtcars,
+  scatter3d(
+    wt, disp, mpg
+  )
+)
+```
+
+### 气泡图
+
