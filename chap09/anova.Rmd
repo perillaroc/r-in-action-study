@@ -1,0 +1,594 @@
+---
+title: "方差分析"
+output: html_notebook
+---
+
+## 术语速成
+
+组件因子
+
+因变量 vs 自变量
+
+均衡设计 vs 非均衡设计
+
+单因素方差分析 one-way ANOVA，单因素组间方差分析
+
+组内因子
+
+单因素组内方差分析，重复测量方差分析
+
+主效应 vs 交互效应
+
+因素方差分析设计
+
+混合模型方差分析
+
+混淆因素 confounding factor
+
+干扰变数 nuisance variable
+
+协变量
+
+协方差分析 ANCOVA
+
+多元方差分析 MANOVA
+
+多元协方差分析 MANCOVA
+
+## ANOVA 模型拟合
+
+广义线性模型的特例
+
+### `aov()` 函数
+
+定量变量
+
+组别因子
+
+标识变量
+
+### 表达式中各项的顺序
+
+类型1：序贯型（默认）
+
+类型2：分层型
+
+类型3：边界型
+
+`car` 包的 `Anova()` 函数
+
+## 单因素方差分析
+
+```{r}
+library(multcomp)
+```
+
+```{r paged.print=FALSE}
+head(cholesterol)
+```
+
+```{r}
+attach(cholesterol)
+table(trt)
+```
+
+```{r paged.print=FALSE}
+aggregate(
+  response,
+  by=list(trt),
+  FUN=mean
+)
+```
+
+
+```{r paged.print=FALSE}
+aggregate(
+  response,
+  by=list(trt),
+  FUN=sd
+)
+```
+
+```{r}
+fit <- aov(
+  response ~ trt
+)
+summary(fit)
+```
+
+```{r}
+library(gplots)
+```
+
+绘制各组均值及置信区间
+
+```{r fig.height=6, fig.width=6}
+plotmeans(
+  response ~ trt,
+  xlab="Treatment",
+  ylab="Response",
+  main="Mean Plot\nwith 95% CI"
+)
+```
+
+```{r}
+detach(cholesterol)
+```
+
+
+### 多重比较
+
+`TukeyHSD()` 函数，成对检验
+
+```{r}
+TukeyHSD(fit)
+```
+
+```{r fig.height=6, fig.width=8}
+par(las=2)
+par(mar=c(5, 8, 4, 2))
+plot(TukeyHSD(fit))
+```
+
+`multcomp` 包中的 `glht()` 函数
+
+```{r}
+tuk <- glht(
+  fit,
+  linfct=mcp(trt="Tukey")
+)
+summary(tuk)
+```
+
+```{r fig.height=6, fig.width=6}
+par(mar=c(5, 4, 6, 2))
+plot(
+  cld(tuk, level=.05),
+  col="lightgray"
+)
+```
+
+### 评估检验的假设条件
+
+假设因变量服从正态分布，各组方差相等
+
+Q-Q 图检验正态性假设
+
+```{r}
+library(car)
+```
+
+```{r fig.height=6, fig.width=6}
+qqPlot(
+  lm(response ~ trt, data=cholesterol),
+  simulate=TRUE,
+  main="Q-Q Plot",
+  labels=FALSE
+)
+```
+
+方差齐性检验
+
+Bartlett 检验
+
+```{r}
+bartlett.test(
+  response ~ trt,
+  data=cholesterol
+)
+```
+
+Fligner-Killeen 检验
+
+```{r}
+fligner.test(
+  response ~ trt,
+  data=cholesterol
+)
+```
+
+Brown-Forsythe 检验
+
+```{r}
+library(HH)
+```
+
+
+```{r}
+hov(
+  response ~ trt,
+  data=cholesterol
+)
+```
+
+`car` 包的 `outlierTest()` 函数检测离群点
+
+```{r paged.print=FALSE}
+outlierTest(fit)
+```
+
+## 单因素协方差分析
+
+ANCOVA
+
+`multcomp` 包的 `litter` 数据集
+
+```{r paged.print=FALSE}
+head(litter)
+```
+
+```{r}
+attach(litter)
+table(dose)
+```
+
+```{r paged.print=FALSE}
+aggregate(
+  weight,
+  by=list(dose),
+  FUN=mean
+)
+```
+
+```{r}
+fit <- aov(
+  weight ~ gesttime + dose
+)
+summary(fit)
+```
+
+`effects` 包中的 `effect()` 函数计算调整均值
+
+```{r}
+library(effects)
+```
+
+```{r}
+effect("dose", fit)
+```
+
+`multcomp` 包的 `glht()` 函数
+
+```{r}
+constrast <- rbind(
+  "no drug vs. drug" = c(3, -1, -1, -1)
+)
+```
+
+```{r}
+summary(
+  glht(
+    fit,
+    linfct=mcp(dose=constrast)
+  )
+)
+```
+
+### 评估检验的假设条件
+
+ANCOVA 需要正态性和同方差性假设，同时还假定回归效率相同
+
+```{r}
+fit2 <- aov(
+  weight ~ gesttime*dose,
+  data=litter
+)
+summary(fit2)
+```
+
+交互项不显著，支持斜率相等的假设
+
+### 结果可视化
+
+`HH` 包中的 `ancova()` 函数
+
+```{r}
+library(HH)
+```
+
+```{r fig.height=6, fig.width=8}
+ancova(
+  weight ~ gesttime + dose,
+  data=litter
+)
+```
+
+```{r}
+detach(litter)
+```
+
+
+## 双因素方差分析
+
+```{r paged.print=FALSE}
+head(ToothGrowth)
+```
+
+
+
+```{r}
+attach(ToothGrowth)
+table(supp, dose)
+```
+
+```{r paged.print=FALSE}
+aggregate(
+  len,
+  by=list(supp, dose),
+  FUN=mean
+)
+```
+
+```{r paged.print=FALSE}
+aggregate(
+  len,
+  by=list(supp, dose),
+  FUN=sd
+)
+```
+
+```{r}
+dose <- factor(dose)
+```
+
+```{r}
+fit <- aov(len ~ supp*dose)
+summary(fit)
+```
+
+```{r}
+interaction.plot(
+  dose, supp, len,
+  type="b",
+  col=c("red", "blue"),
+  pch=c(16, 18),
+  main="Interaction between Dose and Supplement Type"
+)
+```
+
+`gplots` 包中的 `plotmeans()` 函数展示交互作用
+
+```{r}
+plotmeans(
+  len ~ interaction(supp, dose, sep=" "),
+  connect=list(c(1, 3, 5), c(2, 4, 6)),
+  col=c("red", "darkgreen"),
+  main="Interation Plot with 95% CIs",
+  xlab="Treatment and Dose Combination"
+)
+```
+
+`HH` 包的 `interaction2wt()` 函数，对任意顺序的因子设计主效应和交互效应
+
+```{r fig.height=6, fig.width=6}
+interaction2wt(len ~ supp*dose, data=ToothGrowth)
+```
+
+## 重复测量方差分析
+
+```{r paged.print=FALSE}
+head(CO2)
+```
+
+
+```{r}
+CO2$conc <- factor(CO2$conc)
+```
+
+
+```{r paged.print=FALSE}
+w1b1 <- subset(CO2, Treatment=="chilled")
+head(w1b1)
+```
+
+```{r}
+table(w1b1$Plant)
+```
+
+
+
+含一个组间因子（Type）和一个组内因子（conc）的重复测量方差分析
+
+自变量：conc 和 Type
+
+因变量：uptake
+
+标识变量：Plant，表示重复测量
+
+```{r}
+fit <- aov(
+  uptake ~ conc * Type + Error(Plant/(conc)),
+  w1b1
+)
+summary(fit)
+```
+
+```{r fig.height=6, fig.width=6}
+par(las=2)
+par(mar=c(10, 4, 4, 2))
+with(
+  w1b1,
+  interaction.plot(
+    conc, Type, uptake,
+    type="b",
+    col=c("red", "blue"),
+    pch=c(16, 18),
+    main="Interaction Plot for Plant Type and Concentration"
+  )
+)
+```
+
+```{r fig.height=6, fig.width=6}
+par(las=2)
+par(mar=c(10, 4, 4, 2))
+boxplot(
+  uptake ~ Type*conc,
+  data=w1b1,
+  col=c("gold", "green"),
+  main="Chilled Qubec and Mississippi Plants",
+  ylab="Carbon dioxide uptake rate (umol/m^2 sec)",
+  xlab=""
+)
+```
+
+宽格式 wide format
+
+列是变量，行是观测，一行一个受试对象
+
+```{r paged.print=FALSE}
+head(litter)
+```
+
+长格式 long format
+
+因变量的每次观测放到独立的行中
+
+```{r paged.print=FALSE}
+head(CO2)
+```
+
+## 多元方差分析
+
+MANOVA
+
+`MASS` 库的 `UScereal` 数据集
+
+```{r}
+library(MASS)
+```
+
+```{r paged.print=FALSE}
+head(UScereal)
+```
+
+```{r paged.print=FALSE}
+attach(UScereal)
+shelf <- factor(shelf)
+y <- cbind(
+  calories, fat, sugars
+)
+head(y)
+```
+
+```{r paged.print=FALSE}
+aggregate(
+  y,
+  by=list(shelf),
+  FUN=mean
+)
+```
+
+```{r}
+cov(y)
+```
+
+`manova()` 对组间差异进行多元检验
+
+```{r}
+fit <- manova(y ~ shelf)
+summary(fit)
+```
+
+`summary.aov()` 函数对每一个变量做单因素方差分析
+
+```{r}
+summary.aov(fit)
+```
+
+### 评估假设检验
+
+多元正态性
+
+方差-协方差矩阵同质性
+
+
+多元正态性：Q-Q 图
+
+```{r}
+center <- colMeans(y)
+cov <- cov(y)
+d <- mahalanobis(y, center, cov)
+d
+```
+
+```{r}
+n <- nrow(y)
+p <- ncol(y)
+coord <- qqplot(
+  qchisq(
+    ppoints(n),
+    df=p
+  ),
+  d,
+  main="Q-Q Plot Assessing Multivariate Normality",
+  ylab="Mahalanobis D2"
+)
+abline(a=0, b=1)
+```
+
+方差-协方差同质性：Box's M 检验
+
+多元离群点：`mvoutlier` 包中的 `ap.plot()` 函数
+
+```{r}
+library(mvoutlier)
+```
+
+```{r fig.height=6, fig.width=8}
+outliers <- aq.plot(y)
+outliers
+```
+
+### 稳健多元方差分析
+
+稳健单因素 MANOVA：`rrcov` 包中的 `Wilks.test()` 函数
+
+非参数 MANOVA：`vegan` 包中的 `adonis()` 函数
+
+```{r}
+library(rrcov)
+```
+
+```{r}
+Wilks.test(
+  y,
+  shelf,
+  method="mcd"
+)
+```
+
+## 用回归来做 ANOVA
+
+```{r}
+levels(cholesterol$trt)
+```
+
+```{r}
+fit_aov <- aov(
+  response ~ trt,
+  data=cholesterol
+)
+summary(fit_aov)
+```
+
+```{r}
+fit_lm <- lm(
+  response ~ trt,
+  data=cholesterol
+)
+summary(fit_lm)
+```
+
+```{r}
+contrasts(cholesterol$trt)
+```
+
+```{r}
+fit_lm <- lm(
+  response ~ trt,
+  data=cholesterol,
+  contrasts=c("contr.SAS", "contr.helmert")
+)
+summary(fit_lm)
+```
+
