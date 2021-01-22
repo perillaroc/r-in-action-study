@@ -6,22 +6,25 @@ output: html_notebook
 ## 散点图
 
 ```{r}
-attach(mtcars)
 plot(
-  wt, mpg,
+  mtcars$wt, mtcars$mpg,
   main="Basic Scatter plot of MPG vs. Weight",
   xlab="Car Weight (lbs/1000)",
   ylab="Miles Per Gallon", 
   pch=19
 )
 abline(
-  lm(mpg~wt),
+  lm(mpg~wt, data=mtcars),
   col="red",
   lwd=2,
   lty=1
 )
-lines
-detach(mtcars)
+lines(
+  lowess(mtcars$wt, mtcars$mpg),
+  col="blue",
+  lwd=2,
+  lty=2
+)
 ```
 
 `car` 包的 `scatterplot()` 函数
