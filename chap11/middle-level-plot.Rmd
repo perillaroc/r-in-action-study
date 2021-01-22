@@ -230,3 +230,249 @@ with(
 
 ### 气泡图
 
+bubble plot
+
+`symbols()` 函数
+
+```{r fig.height=6, fig.width=6}
+with(
+  mtcars,
+  {
+    r <- sqrt(disp/pi)
+    symbols(
+      wt, mpg, 
+      circle=r,
+      inches=0.30,
+      fg="white",
+      bg="lightblue",
+      main="Bubble Plot with point size proportional to displacement",
+      ylab="Miles Per Gallon",
+      xlab="Weight of Car (lbs/1000)"
+    )
+    text(
+      wt, mpg,
+      rownames(mtcars),
+      cex=0.6
+    )
+  }
+)
+```
+
+## 折线图
+
+```{r paged.print=FALSE}
+tail(Orange)
+```
+
+
+```{r paged.print=TRUE}
+t1 <- subset(
+  Orange,
+  Tree==1
+)
+tail(t1)
+```
+
+
+```{r}
+opar <- par(no.readonly=TRUE)
+par(mfrow=c(1, 2))
+
+plot(
+  t1$age, t1$circumference,
+  xlab="Age (days)",
+  ylab="Circumference (mm)",
+  main="Orange Tree 1 Growth"
+)
+
+plot(
+  t1$age, t1$circumference,
+  xlab="Age (days)",
+  ylab="Circumference (mm)",
+  main="Orange Tree 1 Growth",
+  type="b"
+)
+
+par(opar)
+```
+
+`type` 指定折线图类型
+
+```{r fig.height=6, fig.width=8}
+x <- y <- 1:5
+opar <- par(no.readonly=TRUE)
+par(mfrow=c(2, 4))
+
+type_list <- c(
+  "p",
+  "l",
+  "o",
+  "b",
+  "c",
+  "s",
+  "S",
+  "h"
+)
+
+for (t in type_list) {
+  plot(
+    x, y,
+    type=t,
+    xlab="x",
+    ylab="y",
+    main=paste("type=\"", t, "\"", sep="")
+  )
+}
+
+par(opar)
+```
+
+```{r}
+Orange$Tree <- as.numeric(Orange$Tree)
+ntrees <- max(Orange$Tree)
+xrange <- range(Orange$age)
+yrange <- range(Orange$circumference)
+```
+
+```{r}
+colors <- rainbow(ntrees)
+line_type <- c(1:ntrees)
+plot_char <- seq(18, 18+ntrees, 1)
+```
+
+
+```{r}
+plot(
+  xrange, yrange,
+  type="n",
+  xlab="Age (days)",
+  ylab="Circumference (mm)"
+)
+
+for (i in 1:ntrees) {
+  tree <- subset(Orange, Tree==i)
+  lines(
+    tree$age, tree$circumference,
+    type="b",
+    lwd=2,
+    lty=line_type[i],
+    col=colors[i],
+    pch=plot_char[i]
+  )
+}
+
+title(
+  "Tree Growth",
+  "example of line plot"
+)
+
+legend(
+  xrange[1], yrange[2],
+  1:ntrees,
+  cex=0.8,
+  col=colors,
+  pch=plot_char,
+  lty=line_type,
+  title="Tree"
+)
+```
+
+## 相关图
+
+```{r}
+options(digits=2)
+cor(mtcars)
+```
+
+`corrgram` 包的 `corrgram()` 函数
+
+```{r}
+library(corrgram)
+```
+
+```{r fig.height=6, fig.width=6}
+corrgram(
+  mtcars,
+  order=TRUE,
+  lower.panel=panel.shade,
+  upper.panel=panel.pie,
+  text.panel=panel.txt,
+  main="Corrgram of mtcars intercorrlations"
+)
+```
+
+```{r fig.height=6, fig.width=6}
+corrgram(
+  mtcars,
+  order=TRUE,
+  lower.panel=panel.ellipse,
+  upper.panel=panel.pts,
+  text.panel=panel.txt,
+  main="Corrgram of mtcars intercorrlations"
+)
+```
+
+```{r fig.height=6, fig.width=6}
+corrgram(
+  mtcars,
+  order=TRUE,
+  lower.panel=panel.shade,
+  upper.panel=NULL,
+  text.panel=panel.txt,
+  main="Corrgram of mtcars intercorrlations"
+)
+```
+
+`colorRampPallette()` 函数设置颜色
+
+```{r fig.height=8, fig.width=8}
+cols <- colorRampPalette(
+  c(
+    "darkgoldenrod4",
+    "burlywood1",
+    "darkkhaki",
+    "darkgreen"
+  )
+)
+corrgram(
+  mtcars,
+  order=TRUE,
+  col.regions=cols,
+  lower.panel=panel.shade,
+  upper.panel=panel.conf,
+  text.panel=panel.txt,
+  main="A Corrgram (or Horse) of a Different Color"
+)
+```
+
+## 马赛克图
+
+mosaic plot
+
+`vcd` 包中的 `mosaic()` 函数
+
+```{r}
+ftable(Titanic)
+```
+
+```{r}
+library(vcd)
+```
+
+```{r fig.height=8, fig.width=8}
+mosaic(
+  Titanic,
+  shade=TRUE,
+  legend=TRUE
+)
+```
+
+```{r fig.height=6, fig.width=6}
+mosaic(
+  ~Class + Survived,
+  data=Titanic,
+  shade=TRUE,
+  legend=TRUE
+)
+```
+
