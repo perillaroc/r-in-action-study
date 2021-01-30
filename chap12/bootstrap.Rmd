@@ -1,0 +1,433 @@
+---
+title: "重抽样与自助法"
+output: html_notebook
+---
+
+## 置换检验
+
+置换检验，随机化检验，重随机化检验
+
+精确检验 vs 蒙特卡洛模拟
+
+## 使用 `coin` 包做置换检验
+
+- 响应值与组的分配独立吗？
+- 两个数值变量独立吗？
+- 两个类别型别变量独立吗？
+
+```{r}
+library(coin)
+```
+
+### 独立两样本和 K 样本检验
+
+```{r paged.print=FALSE}
+score <- c(40, 57, 45, 55, 58, 57, 64, 55, 62, 65)
+treatment <- factor(c(rep("A", 5), rep("B", 5)))
+my_data <- data.frame(treatment, score)
+my_data
+```
+
+t 检验，结果显著
+
+```{r}
+t.test(
+  score ~ treatment,
+  data=my_data,
+  var.equal=TRUE
+)
+```
+
+置换检验，结果不显著
+
+```{r}
+oneway_test(
+  score ~ treatment,
+  data=my_data,
+  distribution="exact"
+)
+```
+
+```{r}
+library(MASS)
+```
+
+```{r paged.print=FALSE}
+UScrime <- transform(
+  UScrime,
+  So = factor(So)
+)
+head(UScrime)
+```
+
+Wilcoxon 秩和检验
+
+```{r}
+wilcox_test(
+  Prob ~ So,
+  data=UScrime,
+  distribution="exact"
+)
+```
+
+近似 K 样本置换检验
+
+```{r}
+library(multcomp)
+```
+
+```{r paged.print=FALSE}
+head(cholesterol)
+```
+
+```{r}
+set.seed(1234)
+oneway_test(
+  response ~ trt,
+  data=cholesterol,
+  distribution=approximate(nresample=9999)
+)
+```
+
+### 列联表中的独立性
+
+`chisq_test()`、`cmh_test()`、`lbl_test()` 函数
+
+```{r}
+library(vcd)
+```
+
+```{r paged.print=FALSE}
+head(Arthritis)
+```
+
+`Improved` 是有序因子，进行线性趋势检验
+
+```{r}
+set.seed(1234)
+chisq_test(
+  Treatment ~ Improved,
+  data=Arthritis,
+  distribution=approximate(nresample=9999)
+)
+```
+
+
+```{r paged.print=FALSE}
+Arthritis_v2 <- transform(
+  Arthritis,
+  Improved=as.factor(as.numeric(Improved))
+)
+head(Arthritis_v2)
+```
+
+`Improved` 是分类因子，进行卡方检验
+
+```{r}
+set.seed(1234)
+chisq_test(
+  Treatment ~ Improved,
+  data=Arthritis_v2,
+  distribution=approximate(nresample=9999)
+)
+```
+
+### 数值变量间的独立性
+
+`spearman_test()` 函数
+
+```{r paged.print=FALSE}
+states <- as.data.frame(state.x77)
+head(states)
+```
+
+```{r}
+set.seed(1234)
+spearman_test(
+  Illiteracy ~ Murder,
+  data=states,
+  distribution=approximate(nresample=9999)
+)
+```
+
+### 两样本和 K 样本相关性检验
+
+两配对组的置换检验：`wilcoxsign_test()` 函数
+
+多于两组：`friedman_test()` 函数
+
+Wilcoxon 符号秩检验
+
+```{r}
+wilcoxsign_test(
+  U1 ~ U2,
+  data=UScrime,
+  distribution="exact"
+)
+```
+
+### 深入研究
+
+`independence_test()` 函数
+
+## `lmPerm` 包的置换检验
+
+线性模型的置换检验，比如 `lmp()` 和 `aovp()` 函数
+
+```{r}
+library(lmPerm)
+```
+
+
+### 简单回归和多项式回归
+
+```{r}
+set.seed(1234)
+fit <- lmp(
+  weight ~ height, 
+  data=women,
+  perm="Prob"
+)
+```
+
+```{r}
+summary(fit)
+```
+
+二次方程
+
+```{r}
+set.seed(1234)
+fit <- lmp(
+  weight ~ height + I(height^2),
+  data=women,
+  perm="Prob"
+)
+```
+
+```{r}
+summary(fit)
+```
+
+### 多元回归
+
+```{r paged.print=FALSE}
+head(states)
+```
+
+```{r}
+fit <- lmp(
+  Murder ~ Population + Illiteracy + Income + Frost,
+  data=states,
+  perm="Prob"
+)
+```
+
+```{r}
+summary(fit)
+```
+
+```{r}
+fit <- lm(
+  Murder ~ Population + Illiteracy + Income + Frost,
+  data=states,
+)
+summary(fit)
+```
+
+注意：在 `lm()` 中 Population 和 Illiteracy 均显著，而 `lmp()` 中仅 Illiteracy 显著
+
+### 单因素方差分析和协方差分析
+
+单因素方差分析的置换检验
+
+```{r}
+set.seed(1234)
+fit <- aovp(
+  response ~ trt,
+  data=cholesterol,
+  perm="Prob"
+)
+```
+
+```{r}
+anova(fit)
+```
+
+单因素协方差分析的置换检验
+
+```{r}
+set.seed(1234)
+fit <- aovp(
+  weight ~ gesttime + dose,
+  data=litter,
+  perm="Prob"
+)
+```
+
+```{r}
+anova(fit)
+```
+
+### 双因素方差分析
+
+
+```{r}
+set.seed(1234)
+fit <- aovp(
+  len ~ supp*dose,
+  data=ToothGrowth,
+  perm="Prob"
+)
+```
+
+```{r}
+anova(fit)
+```
+
+### 双因素方差分析
+
+```{r}
+set.seed(1234)
+fit <- aovp(
+  len ~ supp*dose,
+  data=ToothGrowth,
+  perm="Prob"
+)
+```
+
+```{r}
+anova(fit)
+```
+
+
+## 置换检验点评
+
+`perm` 包
+
+`corrperm` 包
+
+`logregperm` 包
+
+`glmperm` 包
+
+置换检验主要用于生成检验零假设的 p 值，有助于回答“效应是否存在”这样的问题。
+
+## 自助法
+
+从初始样本重复随机替换抽样，生成一个或一系列待检验统计量的经验分布。
+无需假设一个特定的理论分布，便可生成统计量的置信区间，并能检验统计假设。
+
+## boot 包中的自助法
+
+```{r}
+library("boot")
+```
+
+### 对单个统计量使用自助法
+
+计算 R 平方的函数
+
+```{r}
+rsq <- function(formula, data, indices) {
+  d <- data[indices,]
+  fit <- lm(formula, data=d)
+  return (summary(fit)$r.square)
+}
+```
+
+自助抽样
+
+```{r}
+set.seed(1234)
+results <- boot(
+  data=mtcars,
+  statistic=rsq,
+  R=1000,
+  formula=mpg ~ wt + disp
+)
+```
+
+`boot` 对象可以输出
+
+```{r}
+print(results)
+```
+
+绘制结果
+
+```{r}
+plot(results)
+```
+
+计算置信区间
+
+```{r}
+ci_results <- boot.ci(
+  results,
+  type=c("perc", "bca")
+)
+ci_results
+```
+
+```{r}
+ci_results$percent
+```
+
+```{r}
+ci_results$bca
+```
+
+
+### 多个统计量的自助法
+
+返回回归系数向量的函数
+
+```{r}
+bs <- function(formula, data, indices) {
+  d <- data[indices,]
+  fit <- lm(formula, data=d)
+  return(coef(fit))
+}
+```
+
+自助抽样
+
+```{r}
+set.seed(1234)
+results <- boot(
+  data=mtcars,
+  statistic=bs,
+  R=1000,
+  formula=mpg ~ wt + disp
+)
+print(results)
+```
+
+多个统计量使用索引
+
+```{r}
+plot(
+  results,
+  index=2
+)
+```
+
+置信区间
+
+```{r}
+boot.ci(
+  results,
+  type="bca",
+  index=2
+)
+```
+
+```{r}
+boot.ci(
+  results,
+  type="bca",
+  index=3
+)
+```
+
