@@ -1,0 +1,385 @@
+---
+title: "广义线性模型"
+output: html_notebook
+---
+
+## 广义线性模型和 `glm()` 函数
+
+
+### `glm()` 函数
+
+```{r eval=FALSE}
+glm(formula, family=family(link=function), data=data)
+```
+
+Logistic 回归
+
+```{r eval=FALSE}
+glm(
+  Y ~ X1 + X2 + X3, 
+  family=binomial(link="logit"), 
+  data=mydata
+)
+```
+
+泊松回归
+
+```{r eval=FALSE}
+glm(
+  Y ~ X1 + X2 + X3, 
+  family=possion(link="log"), 
+  data=mydata
+)
+```
+
+标准线性回归
+
+```{r eval=FALSE}
+glm(
+  Y ~ X1 + X2 + X3, 
+  family=guassian(link="identity"), 
+  data=mydata
+)
+```
+
+与下面代码相同
+
+```{r eval=FALSE}
+lm(
+  Y ~ X1 + X2 + X3, 
+  data=mydata
+)
+```
+
+### 连用的函数
+
+
+### 模型拟合和回归诊断
+
+预测值与残差
+
+```{r eval=FALSE}
+plot(
+  predict(model, type="response"),
+  residuals(model, type="deviance")
+)
+```
+
+帽子值
+
+```{r eval=FALSE}
+plot(hatvalues(model))
+```
+
+学生化残差
+
+```{r eval=FALSE}
+plot(rstudent(model))
+```
+
+Cook 距离统计量
+
+```{r eval=FALSE}
+plot(cooks.distance(model))
+```
+
+`car` 包的影像图
+
+```{r}
+library(car)
+```
+
+```{r, eval=FALSE}
+influencePlot(model)
+```
+
+
+## Logistic 回归
+
+
+```{r}
+data(Affairs, package="AER")
+```
+
+```{r paged.print=FALSE}
+head(Affairs)
+```
+
+```{r}
+summary(Affairs)
+```
+
+```{r}
+table(Affairs$affairs)
+```
+
+生成二值型变量
+
+```{r}
+Affairs$ynaffair <- ifelse(Affairs$affairs == 0, 0, 1)
+Affairs$ynaffair <- factor(
+  Affairs$ynaffair,
+  levels=c(0, 1),
+  labels=c("No", "Yes")
+)
+table(Affairs$ynaffair)
+```
+
+使用 Logistic 回归拟合
+
+```{r}
+fit_full <- glm(
+  ynaffair ~ gender + age + yearsmarried + children +
+    religiousness + education + occupation + rating,
+  data=Affairs,
+  family=binomial()
+)
+summary(fit_full)
+```
+
+去掉不显著的变量，重新拟合
+
+```{r}
+fit_reduced <- glm(
+  ynaffair ~ age + yearsmarried + religiousness + rating,
+  data=Affairs,
+  family=binomial()
+)
+summary(fit_reduced)
+```
+
+使用卡方检验比较两个模型的效果是否相同
+
+```{r}
+anova(
+  fit_reduced,
+  fit_full,
+  test="Chisq"
+)
+```
+
+卡方值不显著，说明两个模型预测效果相同，可以用变量较少的模型代替变量较多的模型
+
+### 解释模型参数
+
+回归系数
+
+```{r}
+coefficients(fit_reduced)
+```
+
+```{r}
+exp(coef(fit_reduced))
+```
+
+系数的置信区间
+
+```{r}
+confint(fit_reduced)
+```
+
+```{r}
+exp(confint(fit_reduced))
+```
+
+### 评价预测变量对结果概率的影响
+
+创建一个虚拟数据集，只有婚姻评分不同
+
+```{r paged.print=FALSE}
+test_data <- data.frame(
+  rating=1:5,
+  age=mean(Affairs$age),
+  yearsmarried=mean(Affairs$yearsmarried),
+  religiousness=mean(Affairs$religiousness)
+)
+test_data
+```
+
+```{r paged.print=FALSE}
+test_data$prob <- predict(
+  fit_reduced,
+  newdata=test_data,
+  type="response"
+)
+test_data
+```
+
+年龄不同的虚拟数据集
+
+```{r paged.print=FALSE}
+test_data <- data.frame(
+  rating=mean(Affairs$rating),
+  age=seq(17, 57, 10),
+  yearsmarried=mean(Affairs$yearsmarried),
+  religiousness=mean(Affairs$religiousness)
+)
+test_data
+```
+
+```{r paged.print=FALSE}
+test_data$prob <- predict(
+  fit_reduced,
+  newdata=test_data,
+  type="response"
+)
+test_data
+```
+
+### 过度离势
+
+一种检测方法：二项分布模型的残差偏差除以残差自由度，如果比值比 1 大很多，可认为存在过度离势。
+
+```{r}
+deviance(fit_reduced) / df.residual(fit_reduced)
+```
+
+检验过度离势，需要拟合两次模型
+
+```{r}
+fit <- glm(
+  ynaffair ~ age + yearsmarried + religiousness + rating,
+  data=Affairs,
+  family=binomial()
+)
+
+fit_od <- glm(
+  ynaffair ~ age + yearsmarried + religiousness + rating,
+  data=Affairs,
+  family=quasibinomial()
+)
+
+pchisq(
+  summary(fit_od)$dispersion * fit$df.residual,
+  fit$df.residual,
+  lower=FALSE
+)
+```
+
+不显著，说明不存在过度离势
+
+### 扩展
+
+**稳健 Logistic 回归**
+
+robust 包的 `glmRob()` 函数
+
+**多项分布回归**
+
+mlogit 包中的 `mlogit()` 函数
+
+**序数 Logistic 回归**
+
+rms 包中的 `lrm()` 函数
+
+## 泊松回归
+
+robust 包中的 `breslow.dat` 数据集
+
+```{r}
+data(breslow.dat, package="robust")
+```
+
+```{r paged.print=FALSE}
+head(breslow.dat)
+```
+
+```{r}
+summary(breslow.dat[c(6, 7, 8, 10)])
+```
+
+绘图分析
+
+```{r fig.height=6, fig.width=6}
+opar <- par(no.readonly=TRUE)
+par(mfrow=c(1, 2))
+with(
+  breslow.dat,
+  {
+    hist(
+      sumY, 
+      breaks=20,
+      xlab="Seizure Count",
+      main="Distribution of Seizures"
+    )
+    boxplot(
+      sumY ~ Trt,
+      xlab="Treatment",
+      main="Group Comparisons"
+    )
+  }
+)
+par(opar)
+```
+
+泊松回归
+
+```{r}
+fit <- glm(
+  sumY ~ Base + Age + Trt,
+  data=breslow.dat,
+  family=poisson()
+)
+summary(fit)
+```
+
+### 解释模型参数
+
+```{r}
+coef(fit)
+```
+
+```{r}
+summary(fit)$coefficients
+```
+
+```{r}
+exp(coef(fit))
+```
+
+### 过度离势
+
+残差偏差 / 残差自由度
+
+```{r}
+deviance(fit) / df.residual(fit)
+```
+
+结果远大于 1，表明存在过度离势
+
+qcc 包的 `qcc.overdispersion.test()` 函数检验泊松模型是否存在过度离势
+
+```{r}
+library(qcc)
+```
+
+```{r}
+qcc.overdispersion.test(breslow.dat$sumY, type="poisson")
+```
+
+p 值小于 0.05，表明存在过度离势
+
+**类泊松方法**
+
+```{r}
+fit_od <- glm(
+  sumY ~ Base + Age + Trt,
+  data=breslow.dat,
+  family=quasipoisson()
+)
+summary(fit_od)
+```
+
+### 扩展
+
+### 时间段变化的泊松回归
+
+使用 `glm()` 中的 `offset` 选项
+
+### 零膨胀的泊松回归
+
+pscl 包中的 `zeroinfl()` 函数
+
+### 稳健泊松回归
+
+robust 包中的 `glmRob()` 函数
