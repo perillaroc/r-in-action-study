@@ -13,12 +13,14 @@ plot(
   ylab="Miles Per Gallon", 
   pch=19
 )
+
 abline(
   lm(mpg~wt, data=mtcars),
   col="red",
   lwd=2,
   lty=1
 )
+
 lines(
   lowess(mtcars$wt, mtcars$mpg),
   col="blue",
@@ -49,7 +51,7 @@ scatterplot(
 
 ### 散点图矩阵
 
-`pairs()` 函数
+`pairs()` 函数绘制散点图矩阵
 
 ```{r fig.height=6, fig.width=6}
 pairs(
@@ -65,10 +67,16 @@ pairs(
 scatterplotMatrix(
   ~ mpg + disp + drat + wt,
   data=mtcars,
-  smooth=list(smoother=loessLine, lty.smooth=2, spread=FALSE),
+  smooth=list(
+    smoother=loessLine, 
+    lty.smooth=2, 
+    spread=FALSE
+  ),
   main="Scatter Plot Matrix via car Package"
 )
 ```
+
+`HH` 包的 `xysplom()` 函数
 
 ```{r}
 library(HH)
@@ -145,6 +153,8 @@ with(
   }
 )
 ```
+
+`IDPmisc` 包的 `ipairs()` 函数
 
 ```{r}
 library(IDPmisc)
@@ -275,7 +285,6 @@ t1 <- subset(
 )
 tail(t1)
 ```
-
 
 ```{r}
 opar <- par(no.readonly=TRUE)
