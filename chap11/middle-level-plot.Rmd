@@ -1,11 +1,13 @@
 ---
 title: "中级绘图"
-output: html_notebook
+output:
+  html_notebook: 
+    fig_height: 6
 ---
 
 ## 散点图
 
-```{r}
+```{r scatter-01}
 plot(
   mtcars$wt, mtcars$mpg,
   main="Basic Scatter plot of MPG vs. Weight",
@@ -35,6 +37,8 @@ lines(
 library(car)
 ```
 
+按条件绘图
+
 ```{r}
 scatterplot(
   mpg ~ wt | cyl,
@@ -55,7 +59,7 @@ scatterplot(
 
 ```{r fig.height=6, fig.width=6}
 pairs(
-  ~mpg + disp + drat + wt,
+  ~ mpg + disp + drat + wt,
   data=mtcars,
   main="Basic Scatter Plot Matrix"
 )
@@ -92,6 +96,8 @@ xysplom(
 
 ### 高密度散点图
 
+生成重叠数据集
+
 ```{r paged.print=FALSE}
 set.seed(1234)
 n <- 10000
@@ -109,6 +115,8 @@ names(my_data) <- c("x", "y")
 head(my_data)
 ```
 
+标准散点图中的点会堆叠在一起
+
 ```{r}
 with(
   my_data,
@@ -120,7 +128,7 @@ with(
 )
 ```
 
-`smoothScatter()` 函数
+`smoothScatter()` 函数利用核密度估计生成用颜色密度表示点分布的散点图
 
 ```{r}
 with(
@@ -132,13 +140,13 @@ with(
 )
 ```
 
-`hexbin` 包的 `hexbin()` 函数
+`hexbin` 包的 `hexbin()` 函数生成封箱图
 
 ```{r}
 library(hexbin)
 ```
 
-```{r fig.height=6, fig.width=6}
+```{r fig.height=8, fig.width=8}
 with(
   my_data,
   {
@@ -148,7 +156,7 @@ with(
     )
     plot(
       bin,
-      main="Hexagonal Binning with 10,000 Observations"
+      main="Hexagonal Binning with 10,000 Observations",
     )
   }
 )
@@ -193,6 +201,8 @@ with(
   )
 )
 ```
+
+添加回归面
 
 ```{r fig.height=6, fig.width=6}
 with(
@@ -247,6 +257,8 @@ bubble plot
 
 `symbols()` 函数
 
+使用面积表示 `disp` 变量，需要计算气泡半径
+
 ```{r fig.height=6, fig.width=6}
 with(
   mtcars,
@@ -276,7 +288,6 @@ with(
 ```{r paged.print=FALSE}
 tail(Orange)
 ```
-
 
 ```{r paged.print=TRUE}
 t1 <- subset(
@@ -339,6 +350,8 @@ for (t in type_list) {
 par(opar)
 ```
 
+绘制更复杂的折线图
+
 ```{r}
 Orange$Tree <- as.numeric(Orange$Tree)
 ntrees <- max(Orange$Tree)
@@ -351,7 +364,6 @@ colors <- rainbow(ntrees)
 line_type <- c(1:ntrees)
 plot_char <- seq(18, 18+ntrees, 1)
 ```
-
 
 ```{r}
 plot(
@@ -391,6 +403,8 @@ legend(
 
 ## 相关图
 
+`cor()` 求相关矩阵
+
 ```{r}
 options(digits=2)
 cor(mtcars)
@@ -413,6 +427,8 @@ corrgram(
 )
 ```
 
+可以设置上下三角和对角线显示的内容
+
 ```{r fig.height=6, fig.width=6}
 corrgram(
   mtcars,
@@ -423,6 +439,8 @@ corrgram(
   main="Corrgram of mtcars intercorrlations"
 )
 ```
+
+可以隐藏某部分
 
 ```{r fig.height=6, fig.width=6}
 corrgram(
@@ -461,11 +479,11 @@ corrgram(
 
 mosaic plot
 
-`vcd` 包中的 `mosaic()` 函数
-
 ```{r}
 ftable(Titanic)
 ```
+
+`vcd` 包中的 `mosaic()` 函数
 
 ```{r}
 library(vcd)
@@ -481,7 +499,7 @@ mosaic(
 
 ```{r fig.height=6, fig.width=6}
 mosaic(
-  ~Class + Survived,
+  ~ Class + Survived,
   data=Titanic,
   shade=TRUE,
   legend=TRUE
