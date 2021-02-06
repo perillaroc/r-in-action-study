@@ -22,9 +22,16 @@ library(coin)
 ### 独立两样本和 K 样本检验
 
 ```{r paged.print=FALSE}
-score <- c(40, 57, 45, 55, 58, 57, 64, 55, 62, 65)
-treatment <- factor(c(rep("A", 5), rep("B", 5)))
-my_data <- data.frame(treatment, score)
+score <- c(
+  40, 57, 45, 55, 58, 
+  57, 64, 55, 62, 65
+)
+treatment <- factor(
+  c(rep("A", 5), rep("B", 5))
+)
+my_data <- data.frame(
+  treatment, score
+)
 my_data
 ```
 
@@ -61,6 +68,13 @@ head(UScrime)
 ```
 
 Wilcoxon 秩和检验
+
+```{r}
+wilcox.test(
+  Prob ~ So,
+  data=UScrime,
+)
+```
 
 ```{r}
 wilcox_test(
