@@ -1,18 +1,33 @@
 ---
 title: "广义线性模型"
-output: html_notebook
+output:
+  html_notebook: default
 ---
 
 ## 广义线性模型和 `glm()` 函数
 
+标准线性模型：假设 Y 呈正态分布
+
+广义线性模型：假设 Y 服从指数分布族中的一种分布
+
 
 ### `glm()` 函数
 
+基本形式
+
 ```{r eval=FALSE}
-glm(formula, family=family(link=function), data=data)
+glm(
+  formula, 
+  family=family(link=function), 
+  data=data
+)
 ```
 
-Logistic 回归
+**Logistic 回归**：用于二值响应变量 (0 和 1)
+
+$$
+log_{e}(\frac{\pi}{1-\pi}) = \beta_0 + \sum_{j=1}^{p}\beta_{j}X_{j}
+$$
 
 ```{r eval=FALSE}
 glm(
@@ -22,7 +37,11 @@ glm(
 )
 ```
 
-泊松回归
+**泊松回归**：适用于在给定时间内响应变量为事件发生数目的情形
+
+$$
+log_{e}(\lambda) = \beta_0 + \sum_{j=1}^{p}\beta_{j}X_{j}
+$$
 
 ```{r eval=FALSE}
 glm(
@@ -32,7 +51,11 @@ glm(
 )
 ```
 
-标准线性回归
+**标准线性回归**：广义线性回归的一种特例
+
+$$
+\mu_{Y} = \beta_0 + \sum_{j=1}^{p}\beta_{j}X_{j}
+$$
 
 ```{r eval=FALSE}
 glm(
@@ -52,6 +75,16 @@ lm(
 ```
 
 ### 连用的函数
+
+- `summary()`
+- `coefficients()`
+- `confint()`
+- `residuals()`
+- `anova()`
+- `plot()`
+- `predict()`
+- `deviance()`
+- `df.residual()`
 
 
 ### 模型拟合和回归诊断
@@ -96,7 +129,6 @@ influencePlot(model)
 
 ## Logistic 回归
 
-
 ```{r}
 data(Affairs, package="AER")
 ```
@@ -116,7 +148,9 @@ table(Affairs$affairs)
 生成二值型变量
 
 ```{r}
-Affairs$ynaffair <- ifelse(Affairs$affairs == 0, 0, 1)
+Affairs$ynaffair <- ifelse(
+  Affairs$affairs == 0, 0, 1
+)
 Affairs$ynaffair <- factor(
   Affairs$ynaffair,
   levels=c(0, 1),
@@ -148,7 +182,7 @@ fit_reduced <- glm(
 summary(fit_reduced)
 ```
 
-使用卡方检验比较两个模型的效果是否相同
+使用**卡方检验**比较两个模型的效果是否相同
 
 ```{r}
 anova(
@@ -159,6 +193,17 @@ anova(
 ```
 
 卡方值不显著，说明两个模型预测效果相同，可以用变量较少的模型代替变量较多的模型
+
+### 诊断图
+
+```{r}
+plot(fit_reduced)
+```
+
+```{r paged.print=FALSE}
+influencePlot(fit_reduced)
+```
+
 
 ### 解释模型参数
 
@@ -228,13 +273,15 @@ test_data
 
 ### 过度离势
 
-一种检测方法：二项分布模型的残差偏差除以残差自由度，如果比值比 1 大很多，可认为存在过度离势。
+观测到的响应变量的方差大于期望的二项分布的方差。
+
+检测方法1：二项分布模型的残差偏差除以残差自由度，如果比值比 1 大很多，可认为存在过度离势。
 
 ```{r}
 deviance(fit_reduced) / df.residual(fit_reduced)
 ```
 
-检验过度离势，需要拟合两次模型
+检测方法2：检验过度离势，需要拟合两次模型
 
 ```{r}
 fit <- glm(
@@ -321,6 +368,16 @@ fit <- glm(
   family=poisson()
 )
 summary(fit)
+```
+
+### 诊断图
+
+```{r}
+plot(fit)
+```
+
+```{r paged.print=FALSE}
+influencePlot(fit)
 ```
 
 ### 解释模型参数
