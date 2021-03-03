@@ -1,0 +1,329 @@
+---
+title: "主成分分析和因子分析"
+output: html_notebook
+---
+
+主成分分析 (PCA)：一种数据降维技巧，将大量相关变量转化为一组很少的不相关变量，这些无关变量被称为主成分。
+
+探索性因子分析 (EDA)：用来发现一组变量的潜在结构的一系列方法，通过寻找一组更小的、潜在的或隐藏的结构来解释已观测到的、显式的变量间的关系。
+
+## R 中的主成分和因子分析
+
+```{r}
+library(psych)
+```
+
+
+常见步骤：
+
+- 数据预处理。输入原始数据矩阵或者相关系数矩阵给 `principal()` 和 `fa()` 函数
+- 选择因子模型
+- 判断要选择的主成分/因子数目
+- 选择主成分/因子
+- 旋转主成分/因子
+- 解释结果
+- 计算主成分或因子得分
+
+## 主成分分析
+
+```{r paged.print=FALSE}
+head(USJudgeRatings)
+```
+
+### 判断主成分的个数
+
+Kaiser-Harris 准则
+
+Cattell 碎石检验
+
+平行分析
+
+```{r}
+fa.parallel(
+  USJudgeRatings[,-1],
+  fa="pc",
+  n.iter=100,
+  show.legend=TRUE,
+  main="Scree plot with parallel analysis"
+)
+```
+
+基于观测特征值的碎石检验：线段和 x 符号
+
+根据 100 个随机数据矩阵推到出来的特征值均值：虚线
+
+大于 1 的特征值准则：y = 1 的水平线
+
+以上三种准则都表明选择一个主成分即可保留数据集的大部分信息
+
+### 提取主成分
+
+#### USJudgeRatings
+
+提取一个未旋转的主成分
+
+```{r paged.print=FALSE}
+pc <- principal(
+  USJudgeRatings[,-1],
+  nfractors=1
+)
+pc
+```
+
+PC1：成分载荷，观测变量与主成分的相关系数。PC1 表示第一个主成分
+
+h2：公因子方差，主成分对每个变量的方差解释度
+
+u2：成分唯一性，方差无法被主成分解释的比例，1 - h2
+
+SS loadings：与主成分相关的特征值
+
+Proportion Var：每个主成分对整个数据集的解释程度
+
+#### Harman23.cor
+
+数据集由变量的相关系数组成
+
+```{r paged.print=FALSE}
+head(Harman23.cor)
+```
+
+```{r}
+fa.parallel(
+  Harman23.cor$cov,
+  n.obs=302,
+  fa="pc",
+  n.iter=100,
+  show.legend=TRUE,
+  main="Scree plot with parallel analysis"
+)
+```
+
+三个准则都建议选择两个主成分
+
+```{r paged.print=FALSE}
+pc <- principal(
+  Harman23.cor$cov,
+  nfactors=2,
+  rotate="none"
+)
+pc
+```
+
+第一主成分解释 58% 方差，第二主成分解释 22% 方差，两者一共解释 81% 方差
+
+### 主成分旋转
+
+旋转是将成分载荷阵变得更容易解释的一系列数学方法，尽可能对成分去噪。
+方法有两种：
+
+- 正交旋转：使选择的成分保持不相关
+- 斜交旋转：让它们变得相关
+
+最流行的是方差极大旋转，是每个成分只由一组有限的变量来解释
+
+```{r paged.print=FALSE}
+rc <- principal(
+  Harman23.cor$cov,
+  nfactors=2,
+  rotate="varimax"
+)
+rc
+```
+
+第一个主成分主要由前四个变量解释 (长度变量)，第二个主成分主要由后四个变量解释 (容量变量)
+
+### 获得主成分得分
+
+#### USJudgeRatings
+
+获得每个观测在某个主成分上的得分
+
+```{r}
+pc <- principal(
+  USJudgeRatings[,-1],
+  nfactors=1,
+  score=TRUE
+)
+head(pc$scores)
+```
+
+律师与法官的接触频数与法官评分间的相关系数 (毫无关联)
+
+```{r}
+cov(USJudgeRatings$CONT, pc$scores)
+```
+
+#### Harman23.cor
+
+使用相关系数矩阵时，仅能计算得分系数
+
+```{r}
+rc <- principal(
+  Harman23.cor$cov,
+  nfactors=2,
+  rotate="varimax"
+)
+round(rc$weights, 2)
+```
+
+## 探索性因子分析
+
+EFA 目标是通过发掘隐藏在数据下的一组较少的、更为基本的无法观测的变量，来解释一组可供观测变量的相关性。
+这些虚拟的、无法观测的变量称作因子。
+
+$$
+X_i = a_1F_1 + a_2F_2 + ... + a_pF_p + U_i
+$$
+
+其中 X_i 是第 i 个可观测变量，F_j 是公共因子，p < k，U_i 是 X_i 变量独有的部分，无法被公共因子解释
+
+ability.cov 数据集提供协方差矩阵
+
+```{r}
+ability.cov
+```
+
+使用 `cov2cor()` 函数将协方差矩阵转为相关系数矩阵
+
+```{r}
+covariances <- ability.cov$cov
+correlations <- cov2cor(covariances)
+correlations
+```
+
+### 判断需提取的公因子数
+
+```{r}
+fa.parallel(
+  correlations,
+  n.obs=221,
+  fa="both",
+  n.iter=100,
+  main="Scree plots with parallel analysis"
+)
+```
+
+### 提取公因子
+
+提取两个因子，使用主轴迭代法 (`fm="pa"`) 提取未旋转因子
+
+```{r paged.print=FALSE}
+fa.pa <- fa(
+  correlations,
+  nfactors=2,
+  rotate="none",
+  fm="pa"
+)
+fa.pa
+```
+
+两个因子解释 60% 方差
+
+### 因子旋转
+
+正交旋转
+
+```{r paged.print=FALSE}
+fa.varimax <- fa(
+  correlations,
+  nfactors=2,
+  rotate="varimax",
+  fm="pa"
+)
+fa.varimax
+```
+
+斜交转轴法，比如 promax
+
+```{r paged.print=FALSE}
+fa.promax <- fa(
+  correlations,
+  nfactors=2,
+  rotate="promax",
+  fm="pa"
+)
+fa.promax
+```
+
+因子结构矩阵：变量与因子的相关系数
+
+因子模式矩阵：标准化的回归系数矩阵，Standardized loadings
+
+因子关联矩阵：因子相关系数矩阵，factor correlations
+
+正交旋转仅考虑第一项，斜交旋转会考虑全部三项
+
+
+计算因子结构矩阵 (又称因子载荷阵)：F = P * Phi
+
+- F：因子载荷阵
+- P：因子模式矩阵
+- Phi：因子关联矩阵
+
+```{r}
+fsm <- function(oblique) {
+  if (class(oblique)[2] == "fa" & is.null(oblique$Phi)) {
+    warning("Object doesn't look like oblique EFA")
+  } else {
+    P <- unclass(oblique$loading)
+    F <- P %*% oblique$Phi
+    colnames(F) <- c("PA1", "PA2")
+    return (F)
+  }
+}
+```
+
+```{r}
+fsm(fa.promax)
+```
+
+绘图
+
+```{r}
+factor.plot(
+  fa.promax,
+  labels=rownames(fa.promax$loadings)
+)
+```
+
+```{r}
+fa.diagram(
+  fa.promax,
+  simple=FALSE
+)
+```
+
+Harman74.cor 数据集
+
+```{r paged.print=FALSE}
+fa.24tests <- fa(
+  Harman74.cor$cov,
+  nfactors=4,
+  rotate="promax"
+)
+fa.24tests
+```
+
+### 因子得分
+
+```{r}
+fa.promax$weights
+```
+
+### 其他与 EFA 相关的包
+
+- FactoMineR
+- FAiR
+- GPArotation
+- nFactors
+
+## 其他潜变量模型
+
+结构方程模型 (SEM)，验证性因子分析 (CFA)
+
+潜类别模型
+
+简单和多重对应分析
+
+多维标度法 (MDS)
