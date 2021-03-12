@@ -1,0 +1,478 @@
+---
+title: "时间序列"
+output: html_notebook
+---
+
+
+横截面数据 (cross-sectional)：给定一个时间点测量变量的值
+
+纵向数据 (longitudinal)：随着时间的变化反复测量变量值
+
+时间序列：给定一段时间内有规律地记录的观测值
+
+## 在 R 中生成时序对象
+
+时间序列对象 (time-series object)：R 中一种包括观测值、起始时间、终止时间以及周期 (如月、季度或年) 的结构
+
+`ts()` 生成时间序列对象。
+
+`frequency` 参数指定每个单位时间所包含的观测值数量
+
+- `frequency=1`：年数据
+- `frequency=4`：季度数据
+- `frequency=12`：月数据
+
+```{r}
+sales <- c(
+  18, 33, 41, 7, 34, 35, 
+  24, 25, 24, 21, 25, 20,
+  22, 31, 40, 29, 25, 21,
+  22, 54, 32, 25, 26, 35
+)
+tsales <- ts(
+  sales,
+  start=c(2003, 1),
+  frequency=12
+)
+tsales
+```
+
+```{r}
+plot(tsales)
+```
+
+查看时序数据属性：
+
+起始时间
+
+```{r}
+start(tsales)
+```
+
+终止时间
+
+```{r}
+end(tsales)
+```
+
+频率
+
+```{r}
+frequency(tsales)
+```
+
+`window()` 函数生成子时序
+
+```{r}
+tsales.subset <- window(
+  tsales,
+  start=c(2003, 5),
+  end=c(2004, 6)
+)
+tsales.subset
+```
+
+## 时序的平滑化和季节性分解
+
+### 通过简单移动平均进行平滑处理
+
+处理时序数据的第一步是画图
+
+居中移动平均 (centered moving average)
+
+$$
+S_t = (Y_{t-q} + ... + Y_t + ... + Y_{t+q})/(2q + 1)
+$$
+
+代价：损失最后 (k-1)/2 个观测值
+
+```{r}
+library(forecast)
+```
+
+```{r fig.height=6, fig.width=8}
+opar <- par(no.readonly=TRUE)
+par(mfrow=c(2, 2))
+ylim <- c(min(Nile), max(Nile))
+
+plot(
+  Nile,
+  main="Raw time series"
+)
+plot(
+  ma(Nile, 3),
+  main="Simple Moving Averages (k=3)",
+  ylim=ylim
+)
+plot(
+  ma(Nile, 7),
+  main="Simple Moving Averages (k=7)",
+  ylim=ylim
+)
+plot(
+  ma(Nile, 15),
+  main="Simple Moving Averages (k=15)",
+  ylim=ylim
+)
+par(opar)
+```
+
+### 季节性分解
+
+趋势因子 (trend component)：捕捉长期变化
+
+季节性因子 (seasonal component)：捕捉一年内的周期性变化
+
+随机 (误差) 因子 (irregular/error component)：捕捉不能被趋势和季节效应解释的变化
+
+相加模型：
+
+$$
+Y_t = Trend_t + Seasonal_t + Irregular_t
+$$
+
+相乘模型：
+
+$$
+Y_t = Trend_t \times Seasonal_t \times Irregular_t
+$$
+
+相乘模型可以通过对数变化转成相加模型
+
+AirPassengers 序列
+
+```{r}
+plot(AirPassengers)
+```
+
+```{r}
+lAirPassengers <- log(AirPassengers)
+plot(
+  lAirPassengers,
+  ylab="log(AirPassengers)"
+)
+```
+
+`stl()` 函数分解序列为趋势项、季节项和随机项
+
+```{r fig.height=8, fig.width=8}
+fit <- stl(
+  lAirPassengers,
+  s.window="period"
+)
+plot(fit)
+```
+
+```{r}
+fit$time.series
+```
+
+```{r}
+exp(fit$time.series)
+```
+
+绘图
+
+使用 R 自带的 monthplot() 函数和 forecast 包中的 seasonplot() 函数
+
+```{r fig.height=6, fig.width=8}
+par(mfrow=c(2, 1))
+monthplot(
+  AirPassengers,
+  xlab="",
+  ylab=""
+)
+seasonplot(
+  AirPassengers,
+  year.labels="TRUE",
+  main=""
+)
+```
+
+## 指数预测模型
+
+单指数模型 (simple/single exponential model)：水平项
+
+双指数模型 (double exponential model) 或 Holt 指数平滑 (Holt exponential smoothing)：水平项 + 趋势项
+
+三指数模型 (triple exponential model) 或 Holt-Winters 指数平滑 (Holt-Winters exponential smoothing)：水平项 + 趋势项 + 季节项
+
+forecast 包的 `ets()` 函数的 `model` 参数
+
+- `A` 相加模型
+- `M` 相乘模型
+- `N` 无
+- `Z` 自动选择
+
+### 单指数平滑
+
+$$
+Y_t = \mathit{level} + \mathit{irregular}_t
+$$
+一步向前预测 1-step ahead forecast
+
+$$
+Y_{t+1} = c_0Y_t + c_1Y_{t-1} + c_2Y_{t-2} + c_2Y_{t_2} + \cdots
+$$
+
+其中 
+
+$$
+c_i = \alpha(1-\alpha)^2 \\
+i=0,1,2,\cdots \\
+0 \leqslant \alpha \leqslant 1
+$$
+
+nhtemp 时序
+
+```{r}
+plot(
+  nhtemp,
+  main="New Haven Annual Mean Temperature",
+  xlab="Year",
+  ylab=expression(paste("Temperature (", degree*F, ")",)),
+)
+```
+
+`model="ANN"` 单指数平滑
+
+```{r}
+fit <- ets(nhtemp, model="ANN")
+fit
+```
+
+一步向前预测
+
+```{r paged.print=FALSE}
+forecast(fit, 1)
+```
+
+绘制预测值，80%/95% 置信区间
+
+```{r}
+plot(
+  forecast(fit, 1),
+  main="New Haven Annual Mean Temperature",
+  xlab="Year",
+  ylab=expression(paste("Temperature (", degree*F, ")",)),
+)
+```
+
+计算预测准确性
+
+```{r}
+accuracy(fit)
+```
+
+度量：
+
+- ME：平均误差
+- RMSE：平均残差平方和的平方根
+- MAE：平均绝对误差
+- MPE：平均百分比误差
+- MAPE：平均绝对百分误差
+- MASE：平均绝对标准化误差
+
+### Holt 指数平滑和 Holt-Winters 指数平滑
+
+alpha：水平项
+
+beta：趋势项
+
+gamma：季节项
+
+Holt-Winters 指数平滑
+
+```{r}
+fit <- ets(
+  log(AirPassengers),
+  model="AAA"
+)
+fit
+```
+
+预测未来值
+
+```{r paged.print=FALSE}
+pred <- forecast(fit, 5)
+pred
+```
+
+```{r}
+plot(
+  pred,
+  main="Forecast for Air Travel",
+  ylab="Log(AirPassengers",
+  xlab="Time"
+)
+```
+
+使用原始尺度预测
+
+```{r}
+pred$mean <- exp(pred$mean)
+pred$lower <- exp(pred$lower)
+pred$upper <- exp(pred$upper)
+p <- cbind(pred$mean, pred$lower, pred$upper)
+dimnames(p)[[2]] <- c(
+  "mean",
+  "Lo 80",
+  "Lo 95",
+  "Hi 80",
+  "Hi 95"
+)
+p
+```
+
+### `ets()` 函数和自动预测
+
+```{r}
+fit <- ets(JohnsonJohnson)
+fit
+```
+
+```{r}
+plot(
+  forecast(fit),
+  main="Johnson & Johnson Forecasts",
+  ylab="Quarterly Earnings (Dollars)",
+  xlab="Time",
+  flty=2
+)
+```
+
+## ARIMA 预测模型
+
+### 概念介绍
+
+滞后阶数 (lag)：向后追溯的观测值的数量
+
+自相关 (Autocorrelation)：度量时序中各个观测值之间的相关性
+
+自相关函数图 (AutoCorrelation Function plot, ACF 图)
+
+偏相关性 (partial autocorrelation)：当序列 Y_t 和 Y_{t-k} 之间的所有值 (Y_{t-1}，Y_{t-2}，...，Y_{t-k+1}) 带来的响应都被移除后，两个序列间的相关性
+
+PACF 图
+
+平稳性 (stationarity)：序列的统计性质不会随着时间的推移而改变
+
+差分 (differencing)：将时序中的每个观测值 Y_t 都替换为 Y_{t-1} - Y_{t}
+
+ADF (Augmented Dickey-Fuller) 统计检验验证平稳性假定。
+
+ARMA 模型含有：
+
+- 自回归 (AutoRegressive, AR) 项
+- 移动平均 (Moving Averages, MA) 项
+
+ARIMA 模型再加上差分
+
+### ARMA 和 ARIMA 模型
+
+#### 验证序列的平稳性
+
+```{r}
+plot(Nile)
+```
+
+```{r}
+ndiffs(Nile)
+```
+
+```{r}
+dNile <- diff(Nile)
+plot(dNile)
+```
+
+`tseries` 库的 `adf.test()` 函数评估序列的稳定性
+
+```{r}
+library(tseries)
+```
+
+
+```{r}
+adf.test(dNile)
+```
+
+#### 选择模型
+
+```{r fig.height=6, fig.width=6}
+par(mfrow=c(2, 1))
+Acf(dNile)
+Pacf(dNile)
+```
+
+选择 ARIMA 模型的方法
+
+| 模型 | ACF | PACF |
+|------|-----|------|
+| ARIMA(p, d, 0) | 逐渐减小到 0 | 在 p 阶后减小到 0 |
+| ARIMA(0, d, q) | q 阶后减小到 0 | 逐渐减小到 0 |
+| ARIMA(p, d, q) | 逐渐减小到 0 | 逐渐减小到 0 |
+
+上述示例中，考虑使用 ARIMA(0, 1, 1) 模型
+
+#### 拟合模型
+
+```{r}
+fit <- arima(
+  Nile,
+  order=c(0, 1, 1)
+)
+fit
+```
+
+```{r}
+accuracy(fit)
+```
+
+#### 模型评价
+
+模型的残差应该满足独立正态分布
+
+```{r}
+qqnorm(fit$residuals)
+qqline(fit$residuals)
+```
+
+`Box.test()` 函数检验自相关系数是否都为 0。
+
+```{r}
+Box.test(fit$residuals, type="Ljung-Box")
+```
+
+没通过显著性检验，可以认为残差的自相关系数为零
+
+#### 预测
+
+```{r paged.print=FALSE}
+forecast(fit, 3)
+```
+
+```{r}
+plot(
+  forecast(fit, 3),
+  xlab="Year",
+  ylab="Annual Flow"
+)
+```
+
+### ARIMA 的自动预测
+
+`auto.arima()` 函数
+
+```{r}
+fit <- auto.arima(sunspots)
+fit
+```
+
+```{r paged.print=FALSE}
+forecast(fit, 3)
+```
+
+```{r}
+accuracy(fit)
+```
+
