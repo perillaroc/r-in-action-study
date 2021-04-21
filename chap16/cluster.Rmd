@@ -1,0 +1,387 @@
+---
+title: "聚类分析"
+output: html_notebook
+---
+
+聚类分析
+
+层次聚类：hierarchical agglomerative clustering
+
+每个观测值自成一类，每次两两合并，直到所有类被聚成一类
+
+划分聚类：patitioning clustering
+
+指定类的个数K，随机分成K类，再重新形成聚合的类
+
+```{r}
+library(flexclust)
+library(rattle)
+```
+
+## 聚类分析的一般步骤
+
+- 选择合适的变量
+- 缩放数据
+- 寻找异常点
+- 计算距离
+- 选择聚类算法
+- 获得一种或多种聚类方法
+- 确定类的数目
+- 获得最终的聚类解决方案
+- 结果可视化
+- 解读类
+- 验证结果
+
+## 计算距离
+
+欧几里得距离
+
+```{r paged.print=FALSE}
+data(nutrient, package="flexclust")
+head(nutrient, 4)
+```
+
+`dist()` 函数，默认返回下三角矩阵
+
+```{r}
+d <- dist(nutrient)
+as.matrix(d)[1:4, 1:4]
+```
+
+
+## 层次聚类分析
+
+算法：
+
+- 定义每个观测值（行或单元）为一类；
+- 计算每类和其他各类的距离；
+- 把距离最短的两类合并成一类；
+- 重复上两步，直到包含所有观测值的类个合并成单个的类为止
+
+
+聚类方法：
+
+- 单联动：一个类中的点与另一个类中的点的最小距离
+- 全联动：一个类中的点与另一个类中的点的最大距离
+- 平均联动：：一个类中的点与另一个类中的点的平均距离
+- 质心：两类中质心（变量均值向量）之间的距离
+- Ward 法：两个类之间所有变量的方差分析的平方和
+
+营养数据的平均联动聚类，使用 `hlclust()` 函数实现
+
+```{r fig.height=6, fig.width=8}
+row.names(nutrient) <- tolower(row.names(nutrient))
+nutrient.scaled <- scale(nutrient)
+d <- dist(nutrient.scaled)
+fit.average <- hclust(d, method="average")
+plot(
+  fit.average,
+  hang=-1,
+  cex=.8,
+  main="Vaerage Linkage Clustering"
+)
+```
+
+使用 NbClust 包辅助确定聚类的最佳数目
+
+```{r}
+library(NbClust)
+```
+
+`NbClust()` 函数输出平均联动聚类的最佳聚类最佳数目
+
+```{r}
+nc <- NbClust(
+  nutrient.scaled,
+  distance="euclidean",
+  min.nc=2,
+  max.nc=15,
+  method="average"
+)
+```
+
+
+
+```{r}
+table(nc$Best.nc[1,])
+```
+
+```{r}
+barplot(
+  table(nc$Best.nc[1,]),
+  xlab="Number of Clusters",
+  ylab="Number of Criteria",
+  main="Number of Clusters Chosed by 26 Criteria"
+)
+```
+
+聚类为 5 类
+
+```{r}
+clusters <- cutree(fit.average, k=5)
+table(clusters)
+```
+
+使用原始数据描述聚类
+
+```{r paged.print=FALSE}
+aggregate(
+  nutrient,
+  by=list(cluster=clusters),
+  median
+)
+```
+
+使用标准度量描述聚类
+
+```{r paged.print=FALSE}
+aggregate(
+  as.data.frame(nutrient.scaled),
+  by=list(cluster=clusters),
+  median
+)
+```
+
+绘制层次关系图，标出分类
+
+```{r fig.height=6, fig.width=8}
+plot(
+  fit.average,
+  hang=-1,
+  cex=.8,
+  main="Average Linkage Cluster\n5 Cluster Solution"
+)
+rect.hclust(fit.average, k=5)
+```
+
+层次聚类难以应用到大样本中。
+
+## 划分聚类分析
+
+### K均值聚类
+
+算法：
+
+1. 选择 K 个中心；
+2. 将每个数据点分配到离它最近的中心点；
+3. 重新计算每类中的点到该类中心点距离的平均值
+4. 分配每个数据到它最近的中心点
+5. 重复步骤 3 和步骤 4，直到所有的观测值不再被分配或是达到最大的迭代次数
+
+```{r paged.print=FALSE}
+data(wine, package="rattle")
+head(wine)
+```
+
+绘制不同分类数类中总的平方值对聚类数量的曲线
+
+```{r}
+wssplot <- function(data, nc=15, seed=1234){
+  wss <- (nrow(data)-1)*sum(apply(data, 2, var))
+  for(i in 2:nc) {
+    set.seed(seed)
+    wss[i] <- sum(kmeans(data, centers=i)$withinss)
+  }
+  plot(
+    1:nc,
+    wss,
+    type="b",
+    xlab="Number of Clusters",
+    ylab="Within groups sum of squares"
+  )
+}
+```
+
+决定聚类个数
+
+```{r}
+df <- scale(wine[-1])
+wssplot(df)
+```
+
+
+
+```{r}
+set.seed(1234)
+nc <- NbClust(
+  df,
+  min.nc=2,
+  max.nc=15,
+  method="kmeans"
+)
+```
+
+```{r}
+table(nc$Best.nc[1,])
+```
+
+```{r}
+barplot(
+  table(nc$Best.nc[1,]),
+  xlab="Number of Clusters",
+  ylab="Number of Criteria",
+  main="Number of Clusters Chosed by 26 Criteria"
+)
+```
+
+使用 3 类进行 K 均值聚类分析
+
+```{r}
+set.seed(1234)
+fit.km <- kmeans(df, 3, nstart=25)
+fit.km$size
+```
+
+```{r}
+fit.km$centers
+```
+
+计算每类的统计值
+
+```{r paged.print=FALSE}
+aggregate(
+  wine[-1],
+  by=list(cluster=fit.km$cluster),
+  mean
+)
+```
+
+K 均值是否揭示类型变量中真正的数据结构
+
+```{r}
+ct.km <- table(wine$Type, fit.km$cluster)
+ct.km
+```
+
+使用 flexclust 包计算兰德指数 (Rank index)，量化类型变量和类之间的协议
+
+```{r}
+randIndex(ct.km)
+```
+
+### 围绕中心点的划分
+
+1. 随机算则 K 个观测值，每个都称为中心点
+2. 计算观测值到各个中心的距离/相异性
+3. 把每个观测值分配到最近的中心点
+4. 计算每个中心点到每个观测值的距离的总和 (总成本)
+5. 选择一个该类中不是中心的点，并和中心点互换
+6. 重新把每个点分配到距它最近的中心点
+7. 再次计算总成本
+8. 如果总成本比步骤 4 计算的总成本少，把新的点作为中心点；
+9. 重复步骤 5 ~ 8 直到中心点不再改变
+
+```{r}
+library(cluster)
+```
+
+使用 `pam()` 进行 PAM 聚类
+
+```{r}
+set.seed(1234)
+fit_pam <- pam(
+  wine[-1],
+  k=3,
+  stand=TRUE
+)
+```
+
+中心点
+
+```{r}
+fit_pam$medoids
+```
+
+绘图
+
+```{r}
+clusplot(
+  fit_pam,
+  main="Bivariate Cluster Plot"
+)
+```
+
+效果验证，不如 K 均值聚类
+
+```{r}
+ct_pam <- table(wine$Type, fit_pam$clustering)
+ct_pam
+```
+
+```{r}
+randIndex(ct_pam)
+```
+
+## 避免不存在的类
+
+```{r}
+library(fMultivar)
+```
+
+生成 1000 个相关系数为 0.5 的二元正态分布
+
+```{r}
+set.seed(1234)
+df <- rnorm2d(1000, rho=.5)
+df <- as.data.frame(df)
+plot(
+  df,
+  main="Bivirate Normal Distribution with rho=0.5"
+)
+```
+
+使用前面的方法确定聚类个数
+
+```{r}
+wssplot(df)
+```
+
+```{r}
+nc <- NbClust(
+  df,
+  min.nc=2,
+  max.nc=15,
+  method="kmeans"
+)
+```
+
+```{r}
+barplot(
+  table(nc$Best.n[1,]),
+  xlab="Number of Clusters",
+  ylab="Number of Criteria",
+  main="Number of Cluster Chosen by 26 Criteria" 
+)
+```
+
+使用 PAM 进行双聚类分析
+
+```{r}
+library(ggplot2)
+```
+
+
+```{r}
+fit <- pam(df, k=2)
+df$clustering <- factor(fit$clustering)
+ggplot(
+  data=df,
+  aes(x=V1, y=V2, color=clustering, shape=clustering)
+) +
+    geom_point() + 
+    ggtitle("Clustering of Bivariate Normal Data")
+```
+
+使用 NbClust 包中的立方聚类规则 (Cubic Cluster Criteria, CCC)。
+当 CCC 的值为负且对于两类或是更多的类递减是，就是典型的单峰分布。
+
+```{r}
+plot(
+  nc$All.index[,4],
+  type="o",
+  ylab="CCC",
+  xlab="Number of clusters",
+  col="blue"
+)
+```
+
