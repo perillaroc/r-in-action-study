@@ -5,13 +5,26 @@ output: html_notebook
 
 聚类分析
 
-层次聚类：hierarchical agglomerative clustering
+**层次聚类**：hierarchical agglomerative clustering
 
 每个观测值自成一类，每次两两合并，直到所有类被聚成一类
 
-划分聚类：patitioning clustering
+常用方法：
+
+- 单联动 single linkage
+- 全联动 complete linkage
+- 平均联动 average linkage
+- 质心 centroid
+- Ward 方法
+
+**划分聚类**：patitioning clustering
 
 指定类的个数K，随机分成K类，再重新形成聚合的类
+
+常用方法：
+
+- K 均值 K-means
+- 围绕中心点的划分 PAM
 
 ```{r}
 library(flexclust)
@@ -21,8 +34,8 @@ library(rattle)
 ## 聚类分析的一般步骤
 
 - 选择合适的变量
-- 缩放数据
-- 寻找异常点
+- 缩放数据：标准化或其他方法
+- 寻找异常点：删掉异常点或者使用对异常值稳健的聚类方法
 - 计算距离
 - 选择聚类算法
 - 获得一种或多种聚类方法
@@ -67,12 +80,14 @@ as.matrix(d)[1:4, 1:4]
 - 质心：两类中质心（变量均值向量）之间的距离
 - Ward 法：两个类之间所有变量的方差分析的平方和
 
-营养数据的平均联动聚类，使用 `hlclust()` 函数实现
+营养数据的平均联动聚类，使用层次聚类函数 `hlclust()` 实现
 
 ```{r fig.height=6, fig.width=8}
 row.names(nutrient) <- tolower(row.names(nutrient))
 nutrient.scaled <- scale(nutrient)
+
 d <- dist(nutrient.scaled)
+
 fit.average <- hclust(d, method="average")
 plot(
   fit.average,
@@ -142,7 +157,7 @@ aggregate(
 )
 ```
 
-绘制层次关系图，标出分类
+绘制层次关系图，使用 `rect.hclust()` 函数标出分类
 
 ```{r fig.height=6, fig.width=8}
 plot(
@@ -261,7 +276,7 @@ randIndex(ct.km)
 
 ### 围绕中心点的划分
 
-1. 随机算则 K 个观测值，每个都称为中心点
+1. 随机选择 K 个观测值，每个都称为中心点
 2. 计算观测值到各个中心的距离/相异性
 3. 把每个观测值分配到最近的中心点
 4. 计算每个中心点到每个观测值的距离的总和 (总成本)
