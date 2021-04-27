@@ -1,0 +1,453 @@
+---
+title: "分类"
+output: html_notebook
+---
+
+```{r}
+library(glue)
+```
+
+## 数据
+
+威斯康星州乳腺癌数据集
+
+```{r}
+loc <- "https://archive.ics.uci.edu/ml/machine-learning-databases/"
+ds <- "breast-cancer-wisconsin/breast-cancer-wisconsin.data"
+url <- glue("{loc}{ds}")
+```
+
+```{r}
+breast <- read.table(
+  url,
+  sep=",",
+  header=FALSE,
+  na.strings="?"
+)
+names(breast) <- c(
+  "ID", 
+  "clumpThickness",
+  "sizeUniformity",
+  "shapeUniformity",
+  "maginalAdhesion",
+  "singleEpithelialCellSize",
+  "bareNuclei",
+  "blankChromatin",
+  "normalNucleoli",
+  "mitosis",
+  "class"
+)
+```
+
+```{r paged.print=FALSE}
+head(breast)
+```
+
+替换 `class` 列
+
+```{r paged.print=FALSE}
+df <- breast[-1]
+df$class <- factor(df$class, levels=c(2, 4), labels=c("benign", "malignant"))
+head(df)
+```
+
+分割训练集和验证集
+
+```{r}
+set.seed(1234)
+train <- sample(nrow(df), 0.7*nrow(df))
+df_train <- df[train,]
+df_validate <- df[-train,]
+```
+
+```{r}
+table(df_train$class)
+```
+
+```{r}
+table(df_validate$class)
+```
+
+## 逻辑回归
+
+```{r}
+fit_logit <- glm(
+  class~.,
+  data=df_train,
+  family=binomial()
+)
+summary(fit_logit)
+```
+
+预测验证集
+
+```{r}
+prob <- predict(fit_logit, df_validate, type="response")
+logit_predict <- factor(
+  prob > .5,
+  levels=c(FALSE, TRUE),
+  labels=c("benign", "malignant")
+)
+```
+
+计算列联表 (混淆矩阵)
+
+```{r}
+logit_perfect <- table(
+  df_validate$class,
+  logit_predict,
+  dnn=c("Actual", "Predicted")
+)
+logit_perfect
+```
+
+### 逐步逻辑回归
+
+```{r}
+fit_logit_reduced <- step(fit_logit)
+```
+
+预测验证集
+
+```{r}
+prob <- predict(fit_logit_reduced, df_validate, type="response")
+logit_predict <- factor(
+  prob > .5,
+  levels=c(FALSE, TRUE),
+  labels=c("benign", "malignant")
+)
+```
+
+计算列联表 (混淆矩阵)
+
+```{r}
+logit_perfect <- table(
+  df_validate$class,
+  logit_predict,
+  dnn=c("Actual", "Predicted")
+)
+logit_perfect
+```
+
+相比上述结果，精简的模型正确分类的样本比全要素模型多 1 个。
+
+## 决策树
+
+### 经典决策树
+
+```{r}
+library(rpart)
+library(rpart.plot)
+```
+
+使用 `rpart` 包中的 `rpart()` 函数构造决策树
+
+```{r}
+set.seed(1234)
+dtree <- rpart(
+  class~.,
+  data=df_train,
+  method="class",
+  parms=list(split="information")
+)
+```
+
+显示预测误差
+
+```{r}
+dtree$cptable
+```
+
+绘制交叉误差与复杂度参数的关系图
+
+```{r}
+plotcp(dtree)
+```
+
+使用 `prune()` 函数进行剪枝
+
+```{r}
+dtree_pruned <- prune(dtree, cp=.0125)
+```
+
+使用 `rpart.plot` 包的 `prp()` 函数绘制决策树
+
+```{r}
+prp(
+  dtree_pruned,
+  type=2,
+  extra=104,
+  fallen.leaves=TRUE,
+  main="Decision Tree"
+)
+```
+
+预测验证集，并计算列联表
+
+```{r}
+dtree_predict <- predict(
+  dtree_pruned,
+  df_validate,
+  type="class"
+)
+dtree_pref <- table(
+  df_validate$class,
+  dtree_predict,
+  dnn=c("Actual", "Predicted")
+)
+dtree_pref
+```
+
+### 条件推断树
+
+条件推断树基于显著性检验选择变量和分割，而不是纯净度或同质性一类的度量
+
+显著性检验是置换检验
+
+```{r}
+library(party)
+```
+
+```{r}
+fit_ctree <- ctree(
+  class~.,
+  data=df_train
+)
+```
+
+绘图
+
+```{r fig.height=6, fig.width=8}
+plot(
+  fit_ctree,
+  main="Coditional Inference Tree"
+)
+```
+
+预测
+
+```{r}
+ctree_predict <- predict(
+  fit_ctree,
+  df_validate,
+  type="response"
+)
+```
+
+列联表
+
+```{r}
+ctree_perf <- table(
+  df_validate$class,
+  ctree_predict,
+  dnn=c("Actual", "Predicted")
+)
+ctree_perf
+```
+
+## 随机森林
+
+```{r}
+library(randomForest)
+```
+
+使用 `randomForest` 包的 `reandomForest()` 函数生成随机森林
+
+```{r}
+set.seed(1234)
+fit_forest <- randomForest(
+  class~.,
+  data=df_train,
+  na.action=na.roughfix,
+  importance=TRUE
+)
+fit_forest
+```
+
+变量重要性
+
+```{r}
+importance(fit_forest, type=2)
+```
+
+预测
+
+```{r}
+forest_predict <- predict(
+  fit_forest,
+  df_validate
+)
+```
+
+列联表
+
+```{r}
+forest_perf <- table(
+  df_validate$class,
+  forest_predict,
+  dnn=c("Actual", "Predicted")
+)
+forest_perf
+```
+
+
+`party` 包中的 `cforest()` 函数基于条件推断树生成随机森林
+
+## 支持向量机
+
+SVM
+
+```{r}
+library(e1071)
+```
+
+
+使用 `e1071` 包的 `svm()` 函数实现
+
+```{r}
+set.seed(1234)
+fit_svm <- svm(
+  class~.,
+  data=df_train
+)
+fit_svm
+```
+
+预测
+
+```{r}
+svm_predict <- predict(
+  fit_svm,
+  na.omit(df_validate)
+)
+```
+
+列联表
+
+```{r}
+svm_perf <- table(
+  na.omit(df_validate)$class,
+  svm_predict,
+  dnn=c("Actual", "Predicted")
+)
+svm_perf
+```
+
+### 选择调和参数
+
+使用带 RBF 核的 SVM 拟合样本，有两个参数：
+
+- gamma
+- cost
+
+`tune.svm()` 函数使用格点搜索法
+
+```{r paged.print=FALSE}
+set.seed(1234)
+tuned <- tune.svm(
+  class~.,
+  data=df_train,
+  gamma=10^(-6:1),
+  cost=10^(-10:10)
+)
+tuned
+```
+
+使用最优参数拟合
+
+```{r}
+fit_svm <- svm(
+  class~.,
+  data=df_train,
+  gamma=.01,
+  cost=1
+)
+```
+
+预测
+
+```{r}
+svm_predict <- predict(
+  fit_svm,
+  na.omit(df_validate)
+)
+```
+
+列联表
+
+```{r}
+svm_perf <- table(
+  na.omit(df_validate)$class,
+  svm_predict,
+  dnn=c("Actual", "Predicted")
+)
+svm_perf
+```
+
+## 选择预测效果最好的解
+
+| 统计量 | 解释 |
+|--------|-------|
+| 敏感度/正例覆盖率/召回率 | 正类的样本单元被成功预测的概率 |
+| 特异性/负例覆盖率 | 负类的样本单元被成功预测的概率 |
+| 正例命中率/精确度 | 被预测为正类的样本单元中，预测正确的样本单元占比 |
+| 负例命中率 | 被预测为负类的样本单元中，预测正确的样本单元占比 |
+| 准确率/ACC | 被正确分类的样本单元所占比重 |
+
+评估二分类准确性
+
+```{r}
+performance <- function(table, n=2) {
+  if (!all(dim(table) == c(2, 2)))
+    stop("Must be a 2 x 2 table")
+
+  tn <- table[1, 1]
+  fp <- table[1, 2]
+  fn <- table[2, 1]
+  tp <- table[2, 2]
+  
+  sensitivity <- tp/(tp + fn)
+  specificity <- tn/(tn + fp)
+  ppp <- tp/(tp + fp)
+  npp <- tn/(tn + fn)
+  hitrate <- (tp + tn)/(tp + tn + fp + fn)
+  result <- paste("Sensitivity = ", round(sensitivity, n),
+                  "\nSpecificity = ", round(specificity, n),
+                  "\nPositive Predictive Value = ", round(ppp, n),
+                  "\nNegative Predictive Value = ", round(npp, n),
+                  "\nAccuracy = ", round(hitrate, n), "\n", sep="")
+  cat(result)
+}
+```
+
+将 `performance()` 函数用于上述五个分类器
+
+```{r}
+performance(logit_perfect)
+```
+
+```{r}
+performance(dtree_pref)
+```
+
+```{r}
+performance(ctree_perf)
+```
+
+```{r}
+performance(forest_perf)
+```
+
+```{r}
+performance(svm_perf)
+```
+
+本章节均使用 0.5 作为阈值，变动阈值的影响可以通过 ROC 曲线来进一步观察
+
+## 用 `rattle` 包进行数据挖掘
+
+```{r}
+library(rattle)
+rattle()
+```
+
