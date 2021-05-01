@@ -3,6 +3,13 @@ title: "分类"
 output: html_notebook
 ---
 
+介绍有监督机器学习领域中四种可用于分类的方法：
+
+- 逻辑回归
+- 决策树
+- 随机森林
+- 支持向量机
+
 ```{r}
 library(glue)
 ```
@@ -16,6 +23,9 @@ loc <- "https://archive.ics.uci.edu/ml/machine-learning-databases/"
 ds <- "breast-cancer-wisconsin/breast-cancer-wisconsin.data"
 url <- glue("{loc}{ds}")
 ```
+
+加载网络数据，并设置列名。
+数据中的缺失数据用 `?` 表示。
 
 ```{r}
 breast <- read.table(
@@ -79,7 +89,7 @@ fit_logit <- glm(
 summary(fit_logit)
 ```
 
-预测验证集
+预测验证集，将概率转换为因子变量
 
 ```{r}
 prob <- predict(fit_logit, df_validate, type="response")
@@ -102,6 +112,8 @@ logit_perfect
 ```
 
 ### 逐步逻辑回归
+
+生成一个包含更少解释变量的模型
 
 ```{r}
 fit_logit_reduced <- step(fit_logit)
@@ -150,9 +162,16 @@ dtree <- rpart(
   method="class",
   parms=list(split="information")
 )
+print(dtree)
 ```
 
-显示预测误差
+显示预测误差：
+
+- `CP`：复杂度参数
+- `nsplit`：分支数
+- `rel error`：训练集误差
+- `xerror`：交叉验证误差
+- `xstd`：交叉验证误差的标准差
 
 ```{r}
 dtree$cptable
@@ -167,7 +186,7 @@ plotcp(dtree)
 使用 `prune()` 函数进行剪枝
 
 ```{r}
-dtree_pruned <- prune(dtree, cp=.0125)
+dtree_pruned <- prune(dtree, cp=0.01000000)
 ```
 
 使用 `rpart.plot` 包的 `prp()` 函数绘制决策树
@@ -289,7 +308,6 @@ forest_perf <- table(
 )
 forest_perf
 ```
-
 
 `party` 包中的 `cforest()` 函数基于条件推断树生成随机森林
 
