@@ -1,0 +1,200 @@
+---
+title: "处理缺失数据的高级方法"
+output: html_notebook
+---
+
+```{r}
+library(VIM)
+library(mice)
+```
+
+## 处理缺失值的步骤
+
+完全随机缺失 (MCAR)
+
+随机缺失 (MAR)
+
+非随机缺失 (NMAR)
+
+## 识别缺失值
+
+```{r}
+data(sleep, pakcage="VIM")
+```
+
+列出没有缺失值的行
+
+```{r paged.print=FALSE}
+sleep[complete.cases(sleep),]
+```
+
+列出至少有一个缺失值的行
+
+```{r paged.print=FALSE}
+sleep[!complete.cases(sleep),]
+```
+
+TRUE 和 FALSE 分别等价于数值 1 和 0
+
+
+```{r}
+sum(is.na(sleep$Dream))
+```
+
+```{r}
+mean(is.na(sleep$Dream))
+```
+
+```{r}
+mean(!complete.cases(sleep))
+```
+
+## 探索缺失值模式
+
+### 列表显示缺失值
+
+mice 包中的 `md.pattern()` 函数
+
+```{r paged.print=FALSE}
+md.pattern(sleep)
+```
+
+### 图形探究缺失数据
+
+VIM 包的 `aggr()`、`matrixplot()` 和 `marginplot()` 函数
+
+`aggr()` 函数绘制每个变量的缺失值数，同时绘制每个变量组合的缺失值数
+
+```{r}
+aggr(sleep, prop=FALSE, numbers=TRUE)
+```
+
+生成每个实例的图形
+
+```{r}
+matrixplot(sleep)
+```
+
+`marginplot()` 生成散点图，在边界展示两个变量的缺失值信息
+
+```{r}
+marginplot(
+  sleep[c("Gest", "Dream")],
+  pch=c(20),
+  col=c("darkgray", "red", "blue")
+)
+```
+
+### 用相关性探索缺失值
+
+影子矩阵：用 1 表示缺失，用 0 表示存在
+
+```{r}
+x <- as.data.frame(abs(is.na(sleep)))
+```
+
+```{r paged.print=FALSE}
+head(sleep, n=5)
+```
+
+```{r paged.print=FALSE}
+head(x, n=5)
+```
+
+提取含（但不全是）缺失值的变量
+
+```{r}
+y <- x[which(apply(x, 2, sum) > 0)]
+```
+
+```{r}
+cor(y)
+```
+
+```{r warning=FALSE}
+cor(sleep, y, use="pairwise.complete.obs")
+```
+
+## 理解缺失数据的来由和影响
+
+分析生成缺失数据的潜在机制
+
+评价缺失数据对回答实质性问题的影响
+
+## 理性处理不完整数据
+
+推理方法会根据变量间的数学或逻辑关系来填补或恢复缺失值
+
+## 完整示例分析 (行删除)
+
+```{r}
+options(digits=1)
+cor(na.omit(sleep))
+```
+
+```{r}
+fit <- lm(Dream ~ Span + Gest, data=na.omit(sleep))
+summary(fit)
+```
+
+## 多重插补
+
+一种基于重复模拟的处理缺失值的方法。
+
+```{r}
+library(mice)
+```
+
+含有插补数据集的列表对象，默认为 5 个
+
+```{r}
+imp <- mice(sleep, seed=1234)
+```
+
+为每个插补对象单独统计，本例中为计算线性回归
+
+```{r}
+fit <- with(imp, lm(Dream ~ Span + Gest))
+```
+
+计算平均结果
+
+```{r}
+pooled <- pool(fit)
+summary(pooled)
+```
+
+获取更多信息
+
+```{r paged.print=FALSE}
+imp
+```
+
+查看实际的插补值
+
+```{r paged.print=FALSE}
+imp$imp$Dream
+```
+
+`complete()` 函数用于观察插补数据集
+
+```{r paged.print=FALSE}
+dataset3 <- complete(imp, action=3)
+dataset3
+```
+
+## 处理缺失值的其他方法
+
+### 成对删除
+
+不推荐使用
+
+```{r}
+cor(sleep, use="pairwise.complete.obs")
+```
+
+### 简单 (非随机) 插补
+
+用某个值 (如均值、中位数或众数) 替换变量中的缺失值。
+
+尽量避免使用
